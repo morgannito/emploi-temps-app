@@ -551,8 +551,7 @@
                 courseDiv.classList.add('assigned');
                 courseDiv.dataset.previousRoom = select.value;
                 
-                // Vérifier les conflits au chargement
-                setTimeout(() => filterRoomOptions(select), 100);
+                // PAS de vérification automatique - uniquement au focus
             }
         });
     }
@@ -567,66 +566,121 @@
                 courseDiv.classList.add('assigned');
                 courseDiv.dataset.previousRoom = select.value;
                 
-                // Vérifier les conflits au chargement
-                setTimeout(() => filterRoomOptions(select), 100);
+                // PAS de vérification automatique - uniquement au focus
             }
         });
     }
 
 
-    // Cache avec TTL pour éviter les requêtes répétées
-    const occupiedRoomsCache = new Map();
-    const CACHE_TTL = 5000; // 5 secondes
-    let pendingRequests = new Map(); // Pour éviter les requêtes doublons
+    // Système de cache intelligent par créneau horaire
+    const slotCache = new Map(); // Cache par créneau horaire complet
+    const CACHE_TTL = 30000; // 30 secondes - plus long car moins de requêtes
+    let batchQueue = []; // Queue des requêtes à traiter
+    let batchTimer = null;
+    const BATCH_DELAY = 50; // Délai pour grouper les requêtes
 
-    // Fonction optimisée avec cache et déduplication
-    async function getOccupiedRooms(courseId) {
-        const now = Date.now();
-        
-        // Vérifier le cache
-        if (occupiedRoomsCache.has(courseId)) {
-            const cached = occupiedRoomsCache.get(courseId);
-            if (now - cached.timestamp < CACHE_TTL) {
-                return cached.data;
+    // Fonction pour extraire les informations de créneau depuis un courseId
+    function getSlotFromCourseId(courseId) {
+        const courseDiv = document.querySelector(`[data-course-id="${courseId}"]`);
+        if (!courseDiv) return null;
+
+        const timeSlot = courseDiv.closest('tr').querySelector('td:first-child').textContent.trim();
+        const dayColumn = courseDiv.closest('td').cellIndex;
+        const weekName = document.querySelector('#week-selector').value;
+
+        return `${weekName}_${dayColumn}_${timeSlot}`;
+    }
+
+    // Traitement par batch des requêtes
+    async function processBatch() {
+        if (batchQueue.length === 0) return;
+
+        const batch = [...batchQueue];
+        batchQueue = [];
+
+        // Grouper par créneau
+        const slotGroups = {};
+        batch.forEach(({ courseId, resolve, reject }) => {
+            const slotKey = getSlotFromCourseId(courseId);
+            if (!slotKey) {
+                reject(new Error('Cannot determine slot'));
+                return;
+            }
+
+            if (!slotGroups[slotKey]) {
+                slotGroups[slotKey] = [];
+            }
+            slotGroups[slotKey].push({ courseId, resolve, reject });
+        });
+
+        // Traiter chaque créneau
+        for (const [slotKey, courses] of Object.entries(slotGroups)) {
+            try {
+                // Vérifier le cache
+                const now = Date.now();
+                if (slotCache.has(slotKey)) {
+                    const cached = slotCache.get(slotKey);
+                    if (now - cached.timestamp < CACHE_TTL) {
+                        courses.forEach(({ resolve }) => resolve(cached.data));
+                        continue;
+                    }
+                }
+
+                // Une seule requête pour tout le créneau
+                const firstCourseId = courses[0].courseId;
+                const response = await fetch('/api/get_occupied_rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course_id: firstCourseId })
+                });
+
+                const data = await response.json();
+                const occupiedRooms = data.occupied_rooms || [];
+
+                // Mettre en cache pour tout le créneau
+                slotCache.set(slotKey, {
+                    data: occupiedRooms,
+                    timestamp: now
+                });
+
+                // Résoudre toutes les promesses du créneau avec les mêmes données
+                courses.forEach(({ resolve }) => resolve(occupiedRooms));
+
+            } catch (error) {
+                console.error('Erreur batch pour créneau', slotKey, error);
+                courses.forEach(({ reject }) => reject(error));
             }
         }
-        
-        // Éviter les requêtes doublons
-        if (pendingRequests.has(courseId)) {
-            return pendingRequests.get(courseId);
-        }
-        
-        // Créer la promesse de requête
-        const requestPromise = fetch('/api/get_occupied_rooms', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ course_id: courseId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            const occupiedRooms = data.occupied_rooms || [];
-            
-            // Mettre en cache
-            occupiedRoomsCache.set(courseId, {
-                data: occupiedRooms,
-                timestamp: now
-            });
-            
-            // Nettoyer les requêtes en cours
-            pendingRequests.delete(courseId);
-            
-            return occupiedRooms;
-        })
-        .catch(error => {
-            console.error('Erreur lors de la récupération des salles occupées:', error);
-            pendingRequests.delete(courseId);
-            return [];
+    }
+
+    // Fonction optimisée avec batch et cache par créneau
+    async function getOccupiedRooms(courseId) {
+        return new Promise((resolve, reject) => {
+            const slotKey = getSlotFromCourseId(courseId);
+            if (!slotKey) {
+                reject(new Error('Cannot determine slot'));
+                return;
+            }
+
+            // Vérifier le cache immédiatement
+            const now = Date.now();
+            if (slotCache.has(slotKey)) {
+                const cached = slotCache.get(slotKey);
+                if (now - cached.timestamp < CACHE_TTL) {
+                    resolve(cached.data);
+                    return;
+                }
+            }
+
+            // Ajouter à la queue
+            batchQueue.push({ courseId, resolve, reject });
+
+            // Programmer le traitement par batch
+            if (batchTimer) {
+                clearTimeout(batchTimer);
+            }
+            batchTimer = setTimeout(processBatch, BATCH_DELAY);
         });
-        
-        // Stocker la promesse pour éviter les doublons
-        pendingRequests.set(courseId, requestPromise);
-        
-        return requestPromise;
     }
 
     // Fonction pour filtrer les options du sélecteur de salle
@@ -782,23 +836,7 @@
         }
     }
 
-    // Fonction pour rafraîchir tous les filtres (utilisée avec parcimonie)
-    async function refreshAllRoomFilters() {
-        const allSelects = document.querySelectorAll('.room-select-mini');
-        console.log(`Rafraîchissement de ${allSelects.length} sélecteurs...`);
-        
-        // Traiter par lots de 3 pour éviter la surcharge serveur
-        const BATCH_SIZE = 3;
-        for (let i = 0; i < allSelects.length; i += BATCH_SIZE) {
-            const batch = Array.from(allSelects).slice(i, i + BATCH_SIZE);
-            await Promise.all(batch.map(select => filterRoomOptions(select)));
-            
-            // Pause entre les lots pour éviter la surcharge
-            if (i + BATCH_SIZE < allSelects.length) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-        }
-    }
+    // Fonction supprimée - chargement uniquement au focus
     
     document.addEventListener('DOMContentLoaded', function() {
         // Nettoyer toutes les classes de conflit au chargement

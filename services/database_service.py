@@ -171,21 +171,22 @@ class DatabaseService:
 
     @staticmethod
     def get_occupied_rooms(week_name: str, day_name: str, start_time: str, end_time: str) -> List[str]:
-        """Récupère les salles occupées pour un créneau - OPTIMISÉ"""
+        """Récupère les salles occupées pour un créneau - ULTRA OPTIMISÉ"""
+        import time
+        query_start = time.time()
 
-        # Query optimisée pour conflits de salles
+        # Query ultra-optimisée avec requête SQL directe
+        # Utilise l'index idx_occupied_rooms pour performances maximales
         occupied_courses = Course.query.filter(
-            and_(
-                Course.week_name == week_name,
-                Course.day == day_name,
-                Course.assigned_room.isnot(None),
-                or_(
-                    and_(Course.start_time <= start_time, Course.end_time > start_time),
-                    and_(Course.start_time < end_time, Course.end_time >= end_time),
-                    and_(Course.start_time >= start_time, Course.end_time <= end_time)
-                )
-            )
-        ).all()
+            Course.week_name == week_name,
+            Course.day == day_name,
+            Course.assigned_room.isnot(None),
+            Course.start_time < end_time,
+            Course.end_time > start_time
+        ).with_entities(Course.assigned_room).distinct().all()
+
+        elapsed = (time.time() - query_start) * 1000
+        print(f"🚀 get_occupied_rooms query: {elapsed:.2f}ms")
 
         return [course.assigned_room for course in occupied_courses if course.assigned_room]
 

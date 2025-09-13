@@ -36,7 +36,8 @@ from services.migration_service import MigrationService
 app = Flask(__name__)
 
 # Configuration SQLite
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///schedule.db'
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'schedule.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialiser la base de données
@@ -371,6 +372,10 @@ from services.professor_service import ProfessorService
 from services.planning_service import PlanningService
 from services.student_service import StudentService
 from services.kiosque_service import KiosqueService
+
+# Initialiser le service de planning V2 global
+from services.planning_v2_service import PlanningV2Service
+planning_service = PlanningV2Service(schedule_manager)
 
 @app.route('/')
 @app.route('/week/<week_name>')
@@ -1106,6 +1111,143 @@ def switch_to_json():
         'message': 'Application basculée vers JSON'
     })
 
+# ==================== SPA API ROUTES - ULTRA PERFORMANCE ====================
+
+@app.route('/spa')
+@app.route('/spa/week/<week_name>')
+def spa_admin(week_name=None):
+    """Interface d'administration en mode SPA - copie intégrale de /"""
+    print(f"SPA Route called with week_name: {week_name}")
+
+    # Forcer la synchronisation des données en production
+    schedule_manager.force_sync_data()
+
+    # Vérifier la cohérence des données
+    try:
+        # Vérifier que les attributions de salles sont cohérentes
+        all_courses = schedule_manager.get_all_courses()
+        room_assignments_count = len(schedule_manager.room_assignments)
+        courses_with_rooms = sum(1 for c in all_courses if c.assigned_room)
+
+        if abs(room_assignments_count - courses_with_rooms) > 5:  # Tolérance de 5
+            print(f"Warning: Incohérence détectée - Attributions: {room_assignments_count}, Cours avec salles: {courses_with_rooms}")
+            # Forcer une nouvelle synchronisation
+            schedule_manager.force_sync_data()
+    except Exception as e:
+        print(f"Erreur lors de la vérification de cohérence: {e}")
+
+    # Utiliser les services pour générer les données
+    weeks_to_display = WeekService.generate_academic_calendar()
+    print(f"SPA Route: Generated {len(weeks_to_display) if weeks_to_display else 0} weeks")
+
+    if not weeks_to_display:
+        return "Erreur lors de la génération du calendrier.", 500
+
+    # Déterminer la semaine à afficher
+    if week_name is None:
+        week_name = WeekService.get_current_week_name(weeks_to_display)
+
+    # Trouver les informations de la semaine
+    current_week_info = WeekService.find_week_info(week_name, weeks_to_display)
+    if not current_week_info:
+        # Fallback si la semaine n'est pas trouvée
+        current_week_info = weeks_to_display[0]
+        week_name = current_week_info['name']
+
+    # Générer la grille horaire et l'ordre des jours
+    time_slots = TimeSlotService.generate_time_grid()
+    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+
+    # Préparer les cours pour la semaine
+    all_courses_for_week = CourseGridService.prepare_courses_for_week(schedule_manager, week_name)
+
+    # Préparer les cours avec les TPs attachés
+    courses_to_place_in_grid = CourseGridService.prepare_courses_with_tps(all_courses_for_week)
+
+    # Construire la grille hebdomadaire
+    weekly_grid = CourseGridService.build_weekly_grid(courses_to_place_in_grid, time_slots, days_order)
+
+    print(f"SPA Route: Rendering template with current_week='{week_name}' and {len(weeks_to_display)} weeks")
+    print(f"SPA Route: First few weeks: {[w.get('name', 'NO_NAME') for w in weeks_to_display[:3]]}")
+
+    return render_template('admin_spa.html',
+                         weekly_grid=weekly_grid,
+                         time_slots=time_slots,
+                         days_order=days_order,
+                         rooms=schedule_manager.rooms,
+                         get_room_name=schedule_manager.get_room_name,
+                         all_weeks=weeks_to_display,
+                         current_week=week_name,
+                         current_week_info=current_week_info,
+                         all_professors=schedule_manager.get_normalized_professors_list())
+
+@app.route('/api/week_data/<week_name>')
+def api_week_data(week_name):
+    """API JSON optimisée pour le SPA - renvoie les données structurées"""
+    try:
+        start_time = time.time()
+
+        # Utiliser le service optimisé
+        courses = DatabaseService.get_courses_by_week(week_name)
+
+        # Transformer en format SPA optimisé
+        formatted_courses = []
+        time_slot_mapping = {
+            '08:00': '8h00-9h00',
+            '09:00': '9h00-10h00',
+            '10:00': '10h00-11h00',
+            '11:00': '11h00-12h00',
+            '12:00': '12h00-13h00',
+            '13:00': '13h00-14h00',
+            '14:00': '14h00-15h00',
+            '15:00': '15h00-16h00',
+            '16:00': '16h00-17h00',
+            '17:00': '17h00-18h00'
+        }
+
+        for course in courses:
+            # Déterminer le créneau horaire
+            time_slot = time_slot_mapping.get(course.start_time, course.raw_time_slot or f"{course.start_time}-{course.end_time}")
+
+            formatted_course = {
+                'course_id': course.course_id,
+                'professor': course.professor,
+                'course_type': course.course_type,
+                'day': course.day,
+                'time_slot': time_slot,
+                'start_time': course.start_time,
+                'end_time': course.end_time,
+                'duration_hours': course.duration_hours,
+                'nb_students': course.nb_students or '',
+                'assigned_room': course.assigned_room
+            }
+            formatted_courses.append(formatted_course)
+
+        elapsed = (time.time() - start_time) * 1000
+
+        response_data = {
+            'success': True,
+            'week_name': week_name,
+            'courses': formatted_courses,
+            'total_courses': len(formatted_courses),
+            'performance': {
+                'query_time_ms': round(elapsed, 2),
+                'courses_count': len(formatted_courses)
+            }
+        }
+
+        print(f"🚀 SPA API /api/week_data/{week_name}: {len(formatted_courses)} cours en {elapsed:.2f}ms")
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        print(f"❌ Erreur SPA API week_data: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'week_name': week_name
+        }), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5005) 
 # ==================== OPTIMISATIONS PLANNING V2 - FINAL ====================
@@ -1130,4 +1272,137 @@ def planning_v2_fast(week_name=None):
     except Exception as e:
         print(f"Erreur planning_v2_fast: {e}")
         return "Erreur lors de la génération du calendrier.", 500
+
+@app.route("/planning_spa")
+@app.route("/planning_spa/<week_name>")
+def planning_v2_spa(week_name=None):
+    """Planning V2 SPA - Même design mais avec navigation AJAX"""
+    print(f"🎯 Route /planning_spa appelée avec week_name={week_name}")
+
+    try:
+        # Utiliser le service global existant pour éviter les conflits
+        context = planning_service.handle_fast_planning(
+            week_name=week_name,
+            cache_service=cache_service
+        )
+
+        print(f"🎯 Contexte généré: {len(context)} éléments")
+        return render_template('planning_v2_spa.html', **context)
+
+    except Exception as e:
+        print(f"❌ Erreur planning_v2_spa: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Erreur lors de la génération du calendrier: {str(e)}", 500
+
+
+# ROUTE SUPPRIMÉE - Doublon (voir route SPA principale ligne 1116)
+
+@app.route('/api/week_data/<week_name>')
+def api_week_data(week_name):
+    """API JSON optimisée pour le SPA - renvoie les données structurées"""
+    try:
+        start_time = time.time()
+
+        # Utiliser le service optimisé
+        courses = DatabaseService.get_courses_by_week(week_name)
+
+        # Transformer en format SPA optimisé
+        formatted_courses = []
+        time_slot_mapping = {
+            '08:00': '8h00-9h00',
+            '09:00': '9h00-10h00',
+            '10:00': '10h00-11h00',
+            '11:00': '11h00-12h00',
+            '12:00': '12h00-13h00',
+            '13:00': '13h00-14h00',
+            '14:00': '14h00-15h00',
+            '15:00': '15h00-16h00',
+            '16:00': '16h00-17h00',
+            '17:00': '17h00-18h00'
+        }
+
+        for course in courses:
+            # Déterminer le créneau horaire
+            time_slot = time_slot_mapping.get(course.start_time, course.raw_time_slot or f"{course.start_time}-{course.end_time}")
+
+            formatted_course = {
+                'course_id': course.course_id,
+                'professor': course.professor,
+                'course_type': course.course_type,
+                'day': course.day,
+                'time_slot': time_slot,
+                'start_time': course.start_time,
+                'end_time': course.end_time,
+                'duration_hours': course.duration_hours,
+                'nb_students': course.nb_students or '',
+                'assigned_room': course.assigned_room
+            }
+            formatted_courses.append(formatted_course)
+
+        elapsed = (time.time() - start_time) * 1000
+
+        response_data = {
+            'success': True,
+            'week_name': week_name,
+            'courses': formatted_courses,
+            'total_courses': len(formatted_courses),
+            'performance': {
+                'query_time_ms': round(elapsed, 2),
+                'courses_count': len(formatted_courses)
+            }
+        }
+
+        print(f"🚀 SPA API /api/week_data/{week_name}: {len(formatted_courses)} cours en {elapsed:.2f}ms")
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        print(f"❌ Erreur SPA API week_data: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'week_name': week_name
+        }), 500
+
+@app.route('/api/course_details/<course_id>')
+def api_course_details(course_id):
+    """API pour les détails d'un cours spécifique"""
+    try:
+        # Ici on pourrait utiliser une requête spécifique si nécessaire
+        # Pour l'instant, on renvoie des détails basiques
+
+        return jsonify({
+            'success': True,
+            'course_id': course_id,
+            'details': {
+                'status': 'normal',
+                'capacity': '25 étudiants',
+                'equipment': 'Standard',
+                'notes': 'Cours régulier'
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/weeks')
+def api_weeks():
+    """API pour la liste des semaines disponibles"""
+    try:
+        weeks = database_service.get_all_weeks()
+
+        return jsonify({
+            'success': True,
+            'weeks': weeks
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 

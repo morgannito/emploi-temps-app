@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning - SPA Ultra-Rapide</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Styles optimisés pour performance */
+        .planning-grid {
+            display: grid;
+            grid-template-columns: 100px repeat(5, 1fr);
+            gap: 2px;
+            background: #f8f9fa;
+        }
+
+        .time-slot {
+            background: #e9ecef;
+            padding: 8px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+        }
+
+        .day-column {
+            background: white;
+            min-height: 60px;
+            padding: 4px;
+            position: relative;
+            border: 1px solid #dee2e6;
+        }
+
+        .course-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin: 1px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .course-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .loading-skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .week-selector {
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 25px;
+            padding: 8px 20px;
+            font-weight: 600;
+            color: #007bff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .week-selector:hover, .week-selector.active {
+            background: #007bff;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .performance-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+        }
+
+        .day-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            padding: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .professor-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 1px 4px;
+            border-radius: 2px;
+            margin-left: 2px;
+            font-size: 9px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Performance Indicator -->
+    <div id="performance" class="performance-indicator">
+        Loading: 0ms
+    </div>
+
+    <div class="container-fluid py-3">
+        <!-- Header Navigation -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="h3 mb-0">
+                        📅 Planning Interactif
+                        <small class="text-muted">Ultra-Rapide</small>
+                    </h1>
+
+                    <!-- Week Navigation -->
+                    <div class="d-flex gap-2" id="week-navigation">
+                        <button class="week-selector" data-week="Semaine 37 A">S37-A</button>
+                        <button class="week-selector active" data-week="Semaine 37 B">S37-B</button>
+                        <button class="week-selector" data-week="Semaine 38 A">S38-A</button>
+                        <button class="week-selector" data-week="Semaine 38 B">S38-B</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Planning Grid -->
+        <div class="row">
+            <div class="col-12">
+                <div class="planning-grid" id="planning-grid">
+                    <!-- Headers -->
+                    <div class="time-slot">Heure</div>
+                    <div class="day-header">Lundi</div>
+                    <div class="day-header">Mardi</div>
+                    <div class="day-header">Mercredi</div>
+                    <div class="day-header">Jeudi</div>
+                    <div class="day-header">Vendredi</div>
+
+                    <!-- Time slots will be generated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Details Modal -->
+    <div class="modal fade" id="courseModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails du Cours</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="course-details">
+                    <!-- Course details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="button" class="btn btn-primary">Modifier</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        /**
+         * SPA Planning Manager - Architecture Ultra-Performance
+         */
+        class PlanningManager {
+            constructor() {
+                this.currentWeek = 'Semaine 37 B';
+                this.cache = new Map();
+                this.loadingStates = new Set();
+                this.performanceStart = 0;
+
+                this.timeSlots = [
+                    '8h00-9h00', '9h00-10h00', '10h00-11h00', '11h00-12h00',
+                    '12h00-13h00', '13h00-14h00', '14h00-15h00', '15h00-16h00',
+                    '16h00-17h00', '17h00-18h00'
+                ];
+
+                this.days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+
+                this.init();
+            }
+
+            async init() {
+                this.performanceStart = performance.now();
+                this.updatePerformance('Initialisation...');
+
+                // Générer la grille de base (synchrone, rapide)
+                this.generateTimeGrid();
+
+                // Charger les données asynchrones
+                await this.loadWeekData(this.currentWeek);
+
+                // Attacher les événements
+                this.bindEvents();
+
+                this.updatePerformance('Prêt');
+            }
+
+            generateTimeGrid() {
+                const grid = document.getElementById('planning-grid');
+
+                this.timeSlots.forEach(timeSlot => {
+                    // Time slot header
+                    const timeDiv = document.createElement('div');
+                    timeDiv.className = 'time-slot';
+                    timeDiv.textContent = timeSlot;
+                    grid.appendChild(timeDiv);
+
+                    // Day columns for this time slot
+                    this.days.forEach((day, dayIndex) => {
+                        const dayDiv = document.createElement('div');
+                        dayDiv.className = 'day-column loading-skeleton';
+                        dayDiv.dataset.day = dayIndex;
+                        dayDiv.dataset.time = timeSlot;
+                        grid.appendChild(dayDiv);
+                    });
+                });
+            }
+
+            async loadWeekData(weekName) {
+                const cacheKey = `week_${weekName}`;
+
+                // Vérifier le cache
+                if (this.cache.has(cacheKey)) {
+                    this.renderWeekData(this.cache.get(cacheKey));
+                    return;
+                }
+
+                // Éviter les requêtes doublons
+                if (this.loadingStates.has(cacheKey)) {
+                    return;
+                }
+
+                this.loadingStates.add(cacheKey);
+                this.updatePerformance('Chargement données...');
+
+                try {
+                    const response = await fetch(`/api/week_data/${encodeURIComponent(weekName)}`, {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    // Mettre en cache
+                    this.cache.set(cacheKey, data);
+
+                    // Rendre les données
+                    this.renderWeekData(data);
+
+                } catch (error) {
+                    console.error('Erreur chargement semaine:', error);
+                    this.showError(`Erreur: ${error.message}`);
+                } finally {
+                    this.loadingStates.delete(cacheKey);
+                }
+            }
+
+            renderWeekData(weekData) {
+                // Supprimer les skeletons
+                document.querySelectorAll('.loading-skeleton').forEach(el => {
+                    el.classList.remove('loading-skeleton');
+                });
+
+                // Organiser les cours par jour et créneau
+                const coursesGrid = {};
+
+                weekData.courses.forEach(course => {
+                    const dayIndex = this.days.indexOf(course.day);
+                    if (dayIndex === -1) return;
+
+                    const key = `${dayIndex}_${course.time_slot}`;
+                    if (!coursesGrid[key]) {
+                        coursesGrid[key] = [];
+                    }
+                    coursesGrid[key].push(course);
+                });
+
+                // Rendre chaque cellule
+                this.timeSlots.forEach(timeSlot => {
+                    this.days.forEach((day, dayIndex) => {
+                        const cell = document.querySelector(`[data-day="${dayIndex}"][data-time="${timeSlot}"]`);
+                        if (!cell) return;
+
+                        const key = `${dayIndex}_${timeSlot}`;
+                        const courses = coursesGrid[key] || [];
+
+                        cell.innerHTML = '';
+
+                        courses.forEach(course => {
+                            const courseCard = this.createCourseCard(course);
+                            cell.appendChild(courseCard);
+                        });
+                    });
+                });
+
+                this.updatePerformance(`${weekData.courses.length} cours rendus`);
+            }
+
+            createCourseCard(course) {
+                const card = document.createElement('div');
+                card.className = 'course-card';
+                card.dataset.courseId = course.course_id;
+
+                // Couleur basée sur le professeur
+                const colors = [
+                    'linear-gradient(135deg, #667eea, #764ba2)',
+                    'linear-gradient(135deg, #f093fb, #f5576c)',
+                    'linear-gradient(135deg, #4facfe, #00f2fe)',
+                    'linear-gradient(135deg, #43e97b, #38f9d7)',
+                    'linear-gradient(135deg, #fa709a, #fee140)',
+                ];
+                const colorIndex = this.hashCode(course.professor) % colors.length;
+                card.style.background = colors[colorIndex];
+
+                card.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 2px;">
+                        ${course.course_type}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="professor-badge">${course.professor}</span>
+                        <span style="font-size: 9px;">${course.duration_hours}h</span>
+                    </div>
+                    ${course.assigned_room ? `<div style="font-size: 9px; opacity: 0.8;">📍 ${course.assigned_room}</div>` : ''}
+                `;
+
+                return card;
+            }
+
+            hashCode(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash);
+            }
+
+            bindEvents() {
+                // Navigation des semaines
+                document.querySelectorAll('.week-selector').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const weekName = e.target.dataset.week;
+                        this.changeWeek(weekName);
+                    });
+                });
+
+                // Clic sur les cours
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('.course-card')) {
+                        const courseId = e.target.closest('.course-card').dataset.courseId;
+                        this.showCourseDetails(courseId);
+                    }
+                });
+            }
+
+            async changeWeek(weekName) {
+                if (weekName === this.currentWeek) return;
+
+                // Mise à jour UI
+                document.querySelectorAll('.week-selector').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.week === weekName);
+                });
+
+                this.currentWeek = weekName;
+
+                // Ajouter skeletons
+                document.querySelectorAll('.day-column').forEach(cell => {
+                    cell.classList.add('loading-skeleton');
+                    cell.innerHTML = '';
+                });
+
+                // Charger nouvelles données
+                await this.loadWeekData(weekName);
+            }
+
+            showCourseDetails(courseId) {
+                // Ici on peut charger les détails via API si nécessaire
+                const modal = new bootstrap.Modal(document.getElementById('courseModal'));
+                document.getElementById('course-details').innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                    </div>
+                `;
+                modal.show();
+
+                // Simuler chargement détails
+                setTimeout(() => {
+                    document.getElementById('course-details').innerHTML = `
+                        <p><strong>ID:</strong> ${courseId}</p>
+                        <p><strong>Statut:</strong> Cours normal</p>
+                        <p><strong>Capacité:</strong> 25 étudiants</p>
+                    `;
+                }, 300);
+            }
+
+            showError(message) {
+                // Simple toast error
+                const toast = document.createElement('div');
+                toast.className = 'toast-container position-fixed top-0 end-0 p-3';
+                toast.innerHTML = `
+                    <div class="toast show" role="alert">
+                        <div class="toast-header">
+                            <strong class="me-auto text-danger">Erreur</strong>
+                        </div>
+                        <div class="toast-body">${message}</div>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+
+                setTimeout(() => toast.remove(), 3000);
+            }
+
+            updatePerformance(status) {
+                const elapsed = Math.round(performance.now() - this.performanceStart);
+                document.getElementById('performance').textContent = `${status}: ${elapsed}ms`;
+            }
+        }
+
+        // Initialiser l'application dès que possible
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                new PlanningManager();
+            });
+        } else {
+            new PlanningManager();
+        }
+    </script>
+</body>
+</html>

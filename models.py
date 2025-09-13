@@ -38,6 +38,8 @@ class Course(db.Model):
         Index('idx_prof_week', 'professor', 'week_name'),
         Index('idx_week_day_time', 'week_name', 'day', 'start_time'),
         Index('idx_room_week_day', 'assigned_room', 'week_name', 'day'),
+        # Index ultra-spécialisé pour get_occupied_rooms
+        Index('idx_occupied_rooms', 'week_name', 'day', 'assigned_room', 'start_time', 'end_time'),
     )
 
     def to_dict(self):
