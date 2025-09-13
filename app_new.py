@@ -679,6 +679,9 @@ from services.week_service import WeekService
 from services.timeslot_service import TimeSlotService
 from services.course_grid_service import CourseGridService
 from services.professor_service import ProfessorService
+from services.planning_service import PlanningService
+from services.student_service import StudentService
+from services.kiosque_service import KiosqueService
 
 @app.route('/')
 @app.route('/week/<week_name>')
@@ -746,182 +749,18 @@ def admin(week_name=None):
 @app.route('/planning/<week_name>')
 def planning_readonly(week_name=None):
     """Vue planning en lecture seule (sans possibilité de modification)."""
-    # Forcer la synchronisation des données
-    schedule_manager.force_sync_data()
-    
-    def generate_academic_calendar():
-        """Génère une liste de semaines alternant A et B pour toute l'année scolaire avec dates."""
-        
-        weeks = []
-        is_type_A = True  # On commence par une semaine de type A
-        
-        # Date de début de l'année scolaire
-        start_date = date(2025, 9, 1)  # Lundi 1er septembre 2025
-        
-        # Première partie de l'année (septembre à décembre) - Semaines 36-52
-        for week_num in range(36, 53):
-            week_type = "A" if is_type_A else "B"
-            
-            # Calculer la date du lundi de cette semaine
-            week_offset = (week_num - 36) * 7  # 7 jours par semaine
-            monday_date = start_date + timedelta(days=week_offset)
-            
-            # Formater la date
-            date_str = monday_date.strftime("%d/%m/%Y")
-            
-            weeks.append({
-                'name': f"Semaine {week_num:02d} {week_type}",
-                'date': date_str,
-                'full_name': f"Semaine {week_num:02d} {week_type} ({date_str})"
-            })
-            is_type_A = not is_type_A
-        
-        # Deuxième partie (janvier à juin) - Semaines 1-25
-        new_year_start = date(2026, 1, 5)  # Premier lundi de janvier 2026
-        
-        for week_num in range(1, 36):
-            week_type = "A" if is_type_A else "B"
-            
-            # Calculer la date du lundi de cette semaine
-            week_offset = (week_num - 1) * 7
-            monday_date = new_year_start + timedelta(days=week_offset)
-            
-            # Formater la date
-            date_str = monday_date.strftime("%d/%m/%Y")
-            
-            weeks.append({
-                'name': f"Semaine {week_num:02d} {week_type}",
-                'date': date_str,
-                'full_name': f"Semaine {week_num:02d} {week_type} ({date_str})"
-            })
-            is_type_A = not is_type_A
-        
-        return weeks
-    
-    # Récupérer toutes les semaines disponibles
-    # Récupérer toutes les semaines disponibles
-    all_courses = schedule_manager.get_all_courses()
-    available_weeks = sorted(set([c.week_name for c in all_courses]))
-    
-    # Si aucune semaine n'est spécifiée, déterminer la semaine courante
-    if not week_name:
-        
-        # Date actuelle
-        today = datetime.now(pytz.timezone("Europe/Paris")).date()
-        
-        # Date de début de l'année scolaire (1er septembre 2025)
-        school_start = date(2025, 9, 1)  # Lundi 1er septembre 2025
-        
-        # Si on est avant septembre 2025, prendre la première semaine
-        if today < school_start:
-            week_name = available_weeks[0] if available_weeks else "Semaine 36 A"
-        else:
-            # Calculer le nombre de semaines depuis le début
-            days_since_start = (today - school_start).days
-            weeks_since_start = days_since_start // 7
-            
-            # Déterminer la semaine courante
-            if weeks_since_start < 17:  # Première partie (septembre-décembre)
-                week_num = 36 + weeks_since_start
-                week_type = "A" if weeks_since_start % 2 == 0 else "B"
-                
-                if week_num <= 52:
-                    current_week = f"Semaine {week_num:02d} {week_type}"
-                else:
-                    # Janvier - calculer depuis le 5 janvier 2026
-                    new_year_start = date(2026, 1, 5)
-                    if today >= new_year_start:
-                        days_since_new_year = (today - new_year_start).days
-                        weeks_since_new_year = days_since_new_year // 7
-                        
-                        week_num = 1 + weeks_since_new_year
-                        # Continuer l'alternance depuis décembre
-                        week_type = "B" if weeks_since_new_year % 2 == 0 else "A"
-                        
-                        if week_num <= 35:
-                            current_week = f"Semaine {week_num:02d} {week_type}"
-                        else:
-                            current_week = "Semaine 35 B"
-                    else:
-                        current_week = "Semaine 52 A"
-            else:
-                # Janvier 2026 et après
-                new_year_start = date(2026, 1, 5)
-                if today >= new_year_start:
-                    days_since_new_year = (today - new_year_start).days
-                    weeks_since_new_year = days_since_new_year // 7
-                    
-                    week_num = 1 + weeks_since_new_year
-                    # L'alternance continue depuis décembre
-                    week_type = "B" if weeks_since_new_year % 2 == 0 else "A"
-                    
-                    if week_num <= 35:
-                        current_week = f"Semaine {week_num:02d} {week_type}"
-                    else:
-                        current_week = "Semaine 35 B"
-                else:
-                    current_week = "Semaine 52 A"
-            
-            # Vérifier si la semaine calculée existe dans les données
-            if current_week in available_weeks:
-                week_name = current_week
-            else:
-                # Si la semaine calculée n'existe pas, prendre la première disponible
-                week_name = available_weeks[0] if available_weeks else "Semaine 37 B"
-    
-    # Récupérer les informations de la semaine
-    academic_calendar = generate_academic_calendar()
-    current_week_info = next((w for w in academic_calendar if w['name'] == week_name), None)
+    # Utiliser le service pour récupérer toutes les données
+    planning_data = PlanningService.get_planning_data(schedule_manager, week_name)
 
-    academic_calendar = generate_academic_calendar()
-    current_week_info = next((w for w in academic_calendar if w['name'] == week_name), None)
-    
-    # Filtrer les cours pour la semaine sélectionnée
-    week_courses = [c for c in all_courses if c.week_name == week_name]
-    
-    # Organiser les cours par jour et heure pour l'affichage
-    courses_by_day_time = {}
-    for course in week_courses:
-        key = f"{course.day}_{course.start_time}"
-        courses_by_day_time[key] = course
-    
-    # Créer une structure de données pour l'affichage
-    days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-    time_slots = []
-    for hour in range(8, 18):
-        time_slots.append(f"{hour}h-{hour+1}h")
-    # Charger les données des salles et créer le mapping
-    import json
-    import os
-    rooms_data = []
-    room_mapping = {}
-    try:
-        salle_path = os.path.join(os.path.dirname(__file__), 'data', 'salle.json')
-        with open(salle_path, 'r', encoding='utf-8') as f:
-            salle_data = json.load(f)
-            rooms_data = salle_data.get('rooms', [])
-            # Créer le mapping ID -> Nom
-            for room in rooms_data:
-                room_mapping[room['_id']] = room['name']
-    except FileNotFoundError:
-        pass
-    
-    # Convertir les IDs de salles en noms pour chaque cours
-    for course in week_courses:
-        if course.assigned_room:
-            # Remplacer l'ID par le nom de la salle
-            course.assigned_room = room_mapping.get(course.assigned_room, f"Salle {course.assigned_room}")
-    
-    return render_template('planning_readonly.html', 
-                         week_name=week_name,
-                         weeks_to_display=academic_calendar,
-                         current_week_info=current_week_info,
-                         courses=week_courses,
-                         courses_by_day_time=courses_by_day_time,
-                         days=days,
-                         time_slots=time_slots,
-                         rooms=rooms_data,
-                         all_weeks=academic_calendar,
+    return render_template('planning_readonly.html',
+                         week_name=planning_data['week_name'],
+                         weeks_to_display=planning_data['weeks_to_display'],
+                         current_week_info=planning_data['current_week_info'],
+                         courses=planning_data['courses'],
+                         courses_by_day_time=planning_data['courses_by_day_time'],
+                         days=planning_data['days'],
+                         time_slots=planning_data['time_slots'],
+                         all_weeks=planning_data['all_weeks'],
                          current_week=week_name,
                          all_professors=schedule_manager.get_normalized_professors_list())
 
@@ -1714,254 +1553,26 @@ def delete_tp_name():
 @app.route('/student/<week_name>')
 def student_view(week_name=None):
     """Interface étudiants - affiche les cours du jour de la semaine en cours."""
-    
-    # Permettre de simuler une date pour les tests via un paramètre d'URL
-    # ex: /student?test_date=2025-06-25
-    test_date_str = request.args.get('test_date')
-    try:
-        now = datetime.strptime(test_date_str, '%Y-%m-%d')
-    except (ValueError, TypeError):
-        now = datetime.now(pytz.timezone("Europe/Paris"))
-    
-    # Nouveau paramètre pour afficher/masquer le sélecteur de période
-    # ex: /student?show_selector=true
-    show_selector = request.args.get("show_selector", "false").lower() == "true"
+    # Utiliser le service pour récupérer toutes les données
+    student_data = StudentService.get_student_view_data(schedule_manager, request, week_name)
 
-    # Nouveau paramètre pour le mode kiosque
-    # ex: /student?kiosque=true
-    kiosque_mode = request.args.get("kiosque", "false").lower() == "true"
-    
-    # Nouveau paramètre pour forcer une période spécifique
-    # ex: /student?period=morning ou /student?period=afternoon
-    forced_period = request.args.get('period')
-    
-    # Nouveau paramètre pour forcer un jour spécifique
-    # ex: /student?day=Lundi ou /student?day=Mardi
-    forced_day = request.args.get('day')
+    # Choisir le template selon le mode
+    template_name = 'student_view_kiosque.html' if student_data['kiosque_mode'] else 'student_view.html'
 
-    def generate_academic_calendar():
-        """Génère une liste de semaines alternant A et B pour toute l'année scolaire, incluant la semaine 36."""
-        weeks = []
-        is_type_A = True
-        # Inclure explicitement la semaine 36 avant la séquence habituelle
-        weeks.append(f"Semaine 36 {'A' if is_type_A else 'B'}")
-        is_type_A = not is_type_A
-        # Semaines 37 à 52
-        for week_num in range(37, 53):
-            week_type = "A" if is_type_A else "B"
-            weeks.append(f"Semaine {week_num} {week_type}")
-            is_type_A = not is_type_A
-        # Semaines 01 à 35
-        for week_num in range(1, 36):
-            week_type = "A" if is_type_A else "B"
-            weeks.append(f"Semaine {week_num:02d} {week_type}")
-            is_type_A = not is_type_A
-        return weeks
-
-    def get_current_academic_week_name(calendar):
-        """Détermine le nom de la semaine académique actuelle à partir du calendrier."""
-        current_week_number = now.isocalendar()[1]
-        
-        # Formats de recherche possibles pour le numéro de semaine
-        search_pattern_1 = f"Semaine {current_week_number} "
-        search_pattern_2 = f"Semaine {current_week_number:02d} "
-        
-        for week in calendar:
-            if week.startswith(search_pattern_1) or week.startswith(search_pattern_2):
-                return week
-        
-        # Si la semaine n'est pas dans le calendrier scolaire (ex: vacances), on prend la première.
-        return calendar[0] if calendar else None
-
-    weeks_to_display = generate_academic_calendar()
-    
-    # Si aucune semaine n'est fournie dans l'URL, on détermine la semaine actuelle.
-    if week_name is None:
-        week_name = get_current_academic_week_name(weeks_to_display)
-
-    def get_current_period():
-        """Détermine si on affiche la matinée ou l'après-midi selon l'heure actuelle"""
-        current_hour = now.hour
-        
-        # Matinée : 8h-12h30 (avant 12h30)
-        # Après-midi : 13h30-18h (après 12h30)
-        if current_hour < 12 or (current_hour == 12 and now.minute < 30):
-            return "morning"
-        else:
-            return "afternoon"
-
-    def generate_time_slots_for_period(period):
-        """Génère les créneaux horaires selon la période"""
-        if period == "morning":
-            # Créneaux du matin : 8h-12h15
-            return [
-                {'start_time': '08:00', 'end_time': '09:00', 'label': '8h-9h'},
-                {'start_time': '09:00', 'end_time': '10:00', 'label': '9h-10h'},
-                {'start_time': '10:15', 'end_time': '11:15', 'label': '10h15-11h15'},
-                {'start_time': '11:15', 'end_time': '12:15', 'label': '11h15-12h15'},
-            ]
-        else:
-            # Créneaux de l'après-midi : 13h30-18h
-            return [
-                {'start_time': '13:30', 'end_time': '14:30', 'label': '13h30-14h30'},
-                {'start_time': '14:30', 'end_time': '15:30', 'label': '14h30-15h30'},
-                {'start_time': '15:45', 'end_time': '16:45', 'label': '15h45-16h45'},
-                {'start_time': '16:45', 'end_time': '17:45', 'label': '16h45-17h45'},
-                {'start_time': '17:45', 'end_time': '18:00', 'label': '17h45-18h'},
-            ]
-
-    # Afficher la journée complète pour placement, puis filtrer à l'affichage
-    time_slots = TimeSlotService.generate_time_grid()
-    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-    
-    # Déterminer le jour à afficher (automatique ou forcé)
-    valid_days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-    
-    if forced_day and forced_day in valid_days:
-        current_day_fr = forced_day
-    else:
-        # Détermination automatique du jour actuel
-        current_day = now.strftime('%A')
-        day_translation = {
-            'Monday': 'Lundi',
-            'Tuesday': 'Mardi', 
-            'Wednesday': 'Mercredi',
-            'Thursday': 'Jeudi',
-            'Friday': 'Vendredi'
-        }
-        current_day_fr = day_translation.get(current_day, 'Lundi')
-    
-    # Récupérer tous les cours pour la semaine
-    all_courses_obj = schedule_manager.get_all_courses()
-    
-    # Récupérer seulement les cours du jour actuel
-    courses_for_display = []
-    for course in all_courses_obj:
-        if course.week_name == week_name and course.assigned_room and course.day == current_day_fr:
-            courses_for_display.append(course)
-    
-    # Trier les cours par ordre alphabétique des professeurs (sans M/Mme)
-    def sort_key(course):
-        # Enlever "M " ou "Mme " du début pour le tri
-        prof_name = course.professor
-        if prof_name.startswith('M '):
-            prof_name = prof_name[2:]  # Enlever "M "
-        elif prof_name.startswith('Mme '):
-            prof_name = prof_name[4:]  # Enlever "Mme "
-        return prof_name.lower()
-    
-    courses_for_display.sort(key=sort_key)
-    
-    # Pas de limitation pour avoir tous les cours
-    # courses_for_display = courses_for_display[:20]
-    
-    # Créer la grille simplifiée pour le jour actuel seulement
-    student_grid = {}
-    student_grid[current_day_fr] = {}
-    for time_slot in time_slots:
-        student_grid[current_day_fr][time_slot['label']] = {
-            'time_info': time_slot,
-            'courses': []
-        }
-
-    # Placer les cours du jour actuel dans la grille
-    for course in courses_for_display:
-        course_start = course.start_time
-        course_placed = False
-        
-        # Trouver le créneau correspondant le plus proche
-        for time_slot in time_slots:
-            slot_start = time_slot['start_time']
-            slot_end = time_slot['end_time']
-            
-            # Vérifier si le cours commence dans ce créneau ou dans les 30 minutes précédentes
-            if course_start >= slot_start and course_start < slot_end:
-                course_dict = asdict(course)
-                course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
-                course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
-                
-                student_grid[current_day_fr][time_slot['label']]['courses'].append(course_dict)
-                course_placed = True
-                break
-        
-        # Si le cours n'a pas été placé, essayer avec une logique plus souple
-        if not course_placed:
-            # Convertir l'heure de début en minutes pour une comparaison plus précise
-            course_minutes = TimeSlotService.time_to_minutes(course_start)
-            best_slot = None
-            min_diff = float('inf')
-            
-            # Trouver le créneau le plus proche
-            for time_slot in time_slots:
-                slot_minutes = TimeSlotService.time_to_minutes(time_slot['start_time'])
-                diff = abs(course_minutes - slot_minutes)
-                
-                if diff < min_diff:
-                    min_diff = diff
-                    best_slot = time_slot
-            
-            # Placer dans le créneau le plus proche si la différence est raisonnable (< 60 minutes)
-            if best_slot and min_diff < 60:
-                course_dict = asdict(course)
-                course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
-                course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
-                
-                student_grid[current_day_fr][best_slot['label']]['courses'].append(course_dict)
-
-    # Sélection de période (matin < 12h05, après-midi ≥ 12h05)
-    def get_current_period_strict():
-        if now.hour < 12 or (now.hour == 12 and now.minute < 5):
-            return "morning"
-        return "afternoon"
-
-    # Déterminer la période à afficher (automatique, forcée, ou toute la journée)
-    if forced_period and forced_period in ['morning', 'afternoon']:
-        period = forced_period
-    elif show_selector and not forced_period:
-        # Si le sélecteur est activé mais pas de période forcée, afficher toute la journée
-        period = 'full_day'
-    else:
-        # Mode automatique basé sur l'heure actuelle
-        period = get_current_period_strict()
-
-    # Filtrer les créneaux selon la période
-    def is_morning_slot(slot):
-        return slot['start_time'] < '12:00'
-
-    def is_afternoon_slot(slot):
-        return slot['start_time'] >= '12:00'
-
-    # Filtrer les créneaux selon la période
-    if period == 'morning':
-        period_slots = [s for s in time_slots if is_morning_slot(s)]
-    elif period == 'afternoon':
-        period_slots = [s for s in time_slots if is_afternoon_slot(s)]
-    else:  # 'full_day'
-        period_slots = time_slots
-
-    # Masquer les créneaux sans cours
-    filtered_time_slots = []
-    for s in period_slots:
-        label = s['label']
-        slot_courses = student_grid[current_day_fr][label]['courses']
-        if slot_courses:
-            filtered_time_slots.append(s)
-
-    template_name = 'student_view_kiosque.html' if kiosque_mode else 'student_view.html'
     return render_template(template_name,
-                         student_grid=student_grid,
-                         time_slots=filtered_time_slots,
-                         days_order=[current_day_fr],
-                         current_week=week_name,
-                         all_weeks=weeks_to_display,
-                         current_period=period,
-                         current_day=current_day_fr,
-                         period_label="Matinée" if period == "morning" else ("Après-midi" if period == "afternoon" else "Journée complète"),
-                         total_courses=len(courses_for_display),
-                         show_selector=show_selector,
-                         forced_period=forced_period,
-                         forced_day=forced_day,
-                         valid_days=valid_days)
+                         student_grid=student_data['student_grid'],
+                         time_slots=student_data['time_slots'],
+                         days_order=student_data['days_order'],
+                         current_week=student_data['current_week'],
+                         all_weeks=student_data['all_weeks'],
+                         current_period=student_data['current_period'],
+                         current_day=student_data['current_day'],
+                         period_label=student_data['period_label'],
+                         total_courses=student_data['total_courses'],
+                         show_selector=student_data['show_selector'],
+                         forced_period=student_data['forced_period'],
+                         forced_day=student_data['forced_day'],
+                         valid_days=student_data['valid_days'])
 
 
 # ============== NOUVELLES ROUTES KIOSQUE ==============
@@ -1970,317 +1581,55 @@ def student_view(week_name=None):
 @app.route('/kiosque/week/<week_name>')
 def kiosque_week(week_name=None):
     """Vue kiosque - tous les cours de la semaine sur un écran"""
-    
-    # Logique semaine actuelle si non spécifiée
-    if week_name is None:
-        today = datetime.now().date()
-        week_num = today.isocalendar()[1]
-        if today.year == 2025 and week_num >= 36:
-            weeks_since_start = week_num - 36
-            is_type_A = (weeks_since_start % 2) == 0
-            week_type = "A" if is_type_A else "B"
-            week_name = f"Semaine {week_num} {week_type}"
-    
-    # Récupérer tous les cours de la semaine
-    all_courses = schedule_manager.get_all_courses()
-    week_courses = [c for c in all_courses if c.week_name == week_name and c.assigned_room]
-    
-    # Organiser par jour
-    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-    week_grid = {}
-    time_slots = TimeSlotService.generate_time_grid()
-    
-    for day in days_order:
-        week_grid[day] = {}
-        for slot in time_slots:
-            week_grid[day][slot['label']] = {
-                'time_info': slot,
-                'courses': []
-            }
-    
-    # Placer les cours dans la grille
-    for course in week_courses:
-        day = course.day
-        if day in week_grid:
-            # Trouver le créneau correspondant
-            for slot in time_slots:
-                if course.start_time >= slot['start_time'] and course.start_time < slot['end_time']:
-                    course_dict = asdict(course)
-                    course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
-                    course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
-                    week_grid[day][slot['label']]['courses'].append(course_dict)
-                    break
-    
+    kiosque_data = KiosqueService.get_kiosque_week_data(schedule_manager, week_name)
+
     return render_template('kiosque_week.html',
-                         week_grid=week_grid,
-                         time_slots=time_slots,
-                         days_order=days_order,
-                         current_week=week_name,
-                         total_courses=len(week_courses))
+                         week_grid=kiosque_data['week_grid'],
+                         time_slots=kiosque_data['time_slots'],
+                         days_order=kiosque_data['days_order'],
+                         current_week=kiosque_data['current_week'],
+                         total_courses=kiosque_data['total_courses'])
 
 @app.route('/kiosque/room')
 @app.route('/kiosque/room/<room_id>')
 def kiosque_room(room_id=None):
     """Vue kiosque - occupation des salles"""
-    
-    # Semaine actuelle
-    today = datetime.now().date()
-    week_num = today.isocalendar()[1]
-    if today.year == 2025 and week_num >= 36:
-        weeks_since_start = week_num - 36
-        is_type_A = (weeks_since_start % 2) == 0
-        week_type = "A" if is_type_A else "B"
-        current_week = f"Semaine {week_num} {week_type}"
-    
-    all_courses = schedule_manager.get_all_courses()
-    week_courses = [c for c in all_courses if c.week_name == current_week and c.assigned_room]
-    
-    # Si room_id spécifié, filtrer
-    if room_id:
-        week_courses = [c for c in week_courses if c.assigned_room == room_id]
-    
-    # Grouper par salle
-    rooms_data = {}
-    for course in week_courses:
-        room_name = schedule_manager.get_room_name(course.assigned_room)
-        if room_name not in rooms_data:
-            rooms_data[room_name] = {
-                'room_id': course.assigned_room,
-                'courses': [],
-                'occupancy_rate': 0
-            }
-        rooms_data[room_name]['courses'].append(asdict(course))
-    
-    # Calculer taux d'occupation (35 créneaux par semaine max)
-    for room_data in rooms_data.values():
-        room_data['occupancy_rate'] = min(100, len(room_data['courses']) * 100 // 35)
-    
+    kiosque_data = KiosqueService.get_kiosque_room_data(schedule_manager, room_id)
+
     return render_template('kiosque_room.html',
-                         rooms_data=rooms_data,
-                         current_week=current_week,
-                         focused_room=room_id)
+                         rooms_data=kiosque_data['rooms_data'],
+                         current_week=kiosque_data['current_week'],
+                         focused_room=kiosque_data['focused_room'])
 
 @app.route('/tv/schedule')
 def tv_schedule():
     """Affichage TV défilant automatique"""
-    
-    # Cours actuels et suivants
-    now = datetime.now(pytz.timezone("Europe/Paris"))
-    current_time = now.strftime('%H:%M')
-    current_day = now.strftime('%A')
-    day_translation = {
-        'Monday': 'Lundi', 'Tuesday': 'Mardi', 'Wednesday': 'Mercredi',
-        'Thursday': 'Jeudi', 'Friday': 'Vendredi'
-    }
-    current_day_fr = day_translation.get(current_day, 'Lundi')
-    
-    # Semaine actuelle
-    week_num = now.isocalendar()[1]
-    if now.year == 2025 and week_num >= 36:
-        weeks_since_start = week_num - 36
-        is_type_A = (weeks_since_start % 2) == 0
-        week_type = "A" if is_type_A else "B"
-        current_week = f"Semaine {week_num} {week_type}"
-    
-    all_courses = schedule_manager.get_all_courses()
-    today_courses = [c for c in all_courses 
-                    if c.week_name == current_week 
-                    and c.day == current_day_fr 
-                    and c.assigned_room]
-    
-    # Séparer cours en cours et à venir
-    current_courses = []
-    upcoming_courses = []
-    
-    for course in today_courses:
-        if course.start_time <= current_time <= course.end_time:
-            current_courses.append(course)
-        elif course.start_time > current_time:
-            upcoming_courses.append(course)
-    
-    upcoming_courses.sort(key=lambda c: c.start_time)
-    
+    tv_data = KiosqueService.get_tv_schedule_data(schedule_manager)
+
     return render_template('tv_schedule.html',
-                         current_courses=current_courses,
-                         upcoming_courses=upcoming_courses[:8],
-                         current_week=current_week,
-                         current_day=current_day_fr,
-                         current_time=current_time)
+                         current_courses=tv_data['current_courses'],
+                         upcoming_courses=tv_data['upcoming_courses'],
+                         current_week=tv_data['current_week'],
+                         current_day=tv_data['current_day'],
+                         current_time=tv_data['current_time'])
 
 @app.route('/kiosque/halfday')
 @app.route('/kiosque/halfday/<layout>')
 def kiosque_halfday(layout="standard"):
     """Vue kiosque - demi-journée avec détection automatique matin/après-midi"""
-    
-    now = datetime.now(pytz.timezone("Europe/Paris"))
-    current_hour = now.hour
-    import locale; locale.setlocale(locale.LC_TIME, "C"); current_day = now.strftime("%A"); locale.setlocale(locale.LC_TIME, "")
-    day_translation = {
-        'Monday': 'Lundi', 'Tuesday': 'Mardi', 'Wednesday': 'Mercredi',
-        'Thursday': 'Jeudi', 'Friday': 'Vendredi'
-    }
-    current_day_fr = day_translation.get(current_day, 'Lundi')
-    
-    # Détection automatique période
-    if current_hour < 12:
-        period = "morning"
-        period_label = "Matinée"
-        time_range = "8h - 12h"
-        time_slots = [
-            {'start_time': '08:00', 'end_time': '09:00', 'label': '8h-9h'},
-            {'start_time': '09:00', 'end_time': '10:00', 'label': '9h-10h'},
-            {'start_time': '10:15', 'end_time': '11:15', 'label': '10h15-11h15'},
-            {'start_time': '11:15', 'end_time': '12:15', 'label': '11h15-12h15'},
-        ]
-    else:
-        period = "afternoon"
-        period_label = "Après-midi"
-        time_range = "13h - 17h"
-        time_slots = [
-            {'start_time': '13:30', 'end_time': '14:30', 'label': '13h30-14h30'},
-            {'start_time': '14:30', 'end_time': '15:30', 'label': '14h30-15h30'},
-            {'start_time': '15:45', 'end_time': '16:45', 'label': '15h45-16h45'},
-            {'start_time': '16:45', 'end_time': '17:45', 'label': '16h45-17h45'},
-        ]
-    
-    # Semaine actuelle
-    week_num = now.isocalendar()[1]
-    if now.year == 2025 and week_num >= 36:
-        weeks_since_start = week_num - 36
-        is_type_A = (weeks_since_start % 2) == 0
-        week_type = "A" if is_type_A else "B"
-        current_week = f"Semaine {week_num} {week_type}"
-    
-    # Récupérer tous les cours du jour actuel
-    all_courses = schedule_manager.get_all_courses()
-    day_courses = [c for c in all_courses 
-                   if c.week_name == current_week 
-                   and c.day == current_day_fr 
-                   and c.assigned_room]
-    
-    # Filtrer par période avec logique plus inclusive
-    period_courses = []
-    for course in day_courses:
-        course_hour = int(course.start_time.split(':')[0])
-        if period == "morning" and course_hour < 13:  # Élargi pour inclure 12h
-            period_courses.append(course)
-        elif period == "afternoon" and course_hour >= 12:  # Commence à 12h
-            period_courses.append(course)
-    
-    # Trier les cours par horaire puis par ordre alphabétique des professeurs
-    def sort_courses(course):
-        prof_name = course.professor
-        # Enlever "M " ou "Mme " pour le tri alphabétique
-        if prof_name.startswith('M '):
-            prof_name = prof_name[2:]
-        elif prof_name.startswith('Mme '):
-            prof_name = prof_name[4:]
-        return (course.start_time, prof_name.lower())
-    
-    period_courses.sort(key=sort_courses)
-    
-    # Créer des créneaux dynamiques basés sur les horaires réels des cours
-    actual_time_slots = {}
-    
-    # Grouper les cours par horaire de début
-    for course in period_courses:
-        start_time = course.start_time
-        end_time = course.end_time
-        
-        # Créer un label pour ce créneau
-        hour_start = int(start_time.split(':')[0])
-        min_start = int(start_time.split(':')[1]) if ':' in start_time else 0
-        hour_end = int(end_time.split(':')[0]) if end_time else hour_start + 1
-        min_end = int(end_time.split(':')[1]) if ':' in end_time and end_time else 0
-        
-        # Format du label (ex: "8h-9h", "10h15-11h15")
-        if min_start == 0 and min_end == 0:
-            label = f"{hour_start}h-{hour_end}h"
-        elif min_start == 0:
-            label = f"{hour_start}h-{hour_end}h{min_end:02d}"
-        elif min_end == 0:
-            label = f"{hour_start}h{min_start:02d}-{hour_end}h"
-        else:
-            label = f"{hour_start}h{min_start:02d}-{hour_end}h{min_end:02d}"
-        
-        # Grouper les cours qui ont exactement le même horaire
-        time_key = f"{start_time}-{end_time}"
-        
-        if time_key not in actual_time_slots:
-            actual_time_slots[time_key] = {
-                'time_info': {
-                    'start_time': start_time,
-                    'end_time': end_time,
-                    'label': label
-                },
-                'courses': [],
-                'sort_key': start_time
-            }
-        
-        course_dict = asdict(course)
-        course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
-        course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
-        actual_time_slots[time_key]['courses'].append(course_dict)
-    
-    # Trier les créneaux par horaire et les cours par prof
-    filtered_time_slots = []
-    filtered_time_slots_data = {}
-    
-    # Trier les créneaux par horaire de début puis par horaire de fin
-    def sort_time_slots(item):
-        time_key, slot_data = item
-        start_time = slot_data['sort_key']
-        end_time = slot_data['time_info']['end_time']
-        
-        # Convertir en minutes pour tri précis
-        start_minutes = TimeSlotService.time_to_minutes(start_time)
-        end_minutes = TimeSlotService.time_to_minutes(end_time)
-        
-        # Trier d'abord par heure de début, puis par heure de fin
-        return (start_minutes, end_minutes)
-    
-    sorted_slots = sorted(actual_time_slots.items(), key=sort_time_slots)
-    
-    for time_key, slot_data in sorted_slots:
-        # Trier les cours du créneau par ordre alphabétique de prof
-        slot_data['courses'].sort(key=lambda c: c['professor'].replace('M ', '').replace('Mme ', '').lower())
-        
-        filtered_time_slots.append(slot_data['time_info'])
-        filtered_time_slots_data[slot_data['time_info']['label']] = slot_data
-    
-    # Déterminer le template selon le layout
-    template_map = {
-        "standard": "kiosque_halfday.html",
-        "compact": "kiosque_halfday_compact.html", 
-        "wide": "kiosque_halfday_wide.html",
-        "ipad": "kiosque_halfday_compact.html",
-        "grid4": "kiosque_halfday_grid4.html",
-        "compactv1": "kiosque_halfday_compactv1.html",
-        "compactv2": "kiosque_halfday_compactv2.html", 
-        "compactv3": "kiosque_halfday_compactv3.html",
-        "compactv4": "kiosque_halfday_compactv4.html",
-        "compactv5": "kiosque_halfday_compactv5.html",
-        "compactv6": "kiosque_halfday_compactv6.html",
-        "compactv7": "kiosque_halfday_compactv7.html",
-        "compactv8": "kiosque_halfday_compactv8.html",
-        "compactv9": "kiosque_halfday_compactv9.html",
-        "compactv10": "kiosque_halfday_compactv10.html",
-        "compactv11": "kiosque_halfday_compactv11.html"
-    }
-    
-    template_name = template_map.get(layout, "kiosque_halfday.html")
-    
-    return render_template(template_name,
-                         time_slots_data=filtered_time_slots_data,
-                         time_slots=filtered_time_slots,
-                         current_week=current_week,
-                         current_day=current_day_fr,
-                         period=period,
-                         period_label=period_label,
-                         time_range=time_range,
-                         total_courses=len(period_courses),
-                         current_time=now.strftime('%H:%M'),
-                         layout=layout)
+    kiosque_data = KiosqueService.get_kiosque_halfday_data(schedule_manager, layout)
+
+    return render_template(kiosque_data['template_name'],
+                         time_slots_data=kiosque_data['time_slots_data'],
+                         time_slots=kiosque_data['time_slots'],
+                         current_week=kiosque_data['current_week'],
+                         current_day=kiosque_data['current_day'],
+                         period=kiosque_data['period'],
+                         period_label=kiosque_data['period_label'],
+                         time_range=kiosque_data['time_range'],
+                         total_courses=kiosque_data['total_courses'],
+                         current_time=kiosque_data['current_time'],
+                         layout=kiosque_data['layout'])
 
 @app.route('/api/display/current')
 def api_display_current():
