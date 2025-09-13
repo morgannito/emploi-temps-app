@@ -10,7 +10,11 @@ class ProfessorViewService:
         self.schedule_manager = schedule_manager
 
     def load_room_mapping(self) -> Dict[str, str]:
-        """Charge le mapping des salles depuis le fichier salle.json"""
+        """Charge le mapping des salles depuis le cache si disponible"""
+        if hasattr(self.schedule_manager, 'perf_cache'):
+            return self.schedule_manager.perf_cache.get_cached_room_mapping()
+
+        # Fallback pour compatibilité
         room_mapping = {}
         try:
             salle_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'salle.json')
@@ -23,8 +27,12 @@ class ProfessorViewService:
         return room_mapping
 
     def find_professor_name(self, prof_name: str) -> str:
-        """Recherche intelligente du nom du professeur"""
-        all_courses = self.schedule_manager.get_all_courses()
+        """Recherche intelligente du nom du professeur avec cache"""
+        if hasattr(self.schedule_manager, 'perf_cache'):
+            all_courses = self.schedule_manager.perf_cache.get_cached_courses(self.schedule_manager)
+        else:
+            all_courses = self.schedule_manager.get_all_courses()
+
         all_profs = set([c.professor for c in all_courses])
 
         # Essayer d'abord le nom exact
@@ -44,7 +52,11 @@ class ProfessorViewService:
         return prof_name  # Garder l'original si aucun match
 
     def get_available_weeks(self) -> List[Dict[str, str]]:
-        """Récupère toutes les semaines disponibles"""
+        """Récupère toutes les semaines disponibles avec cache"""
+        if hasattr(self.schedule_manager, 'perf_cache'):
+            return self.schedule_manager.perf_cache.get_cached_available_weeks(self.schedule_manager)
+
+        # Fallback
         all_courses = self.schedule_manager.get_all_courses()
         available_weeks = sorted(set([c.week_name for c in all_courses]))
 
@@ -58,8 +70,12 @@ class ProfessorViewService:
         return weeks_list
 
     def get_professor_courses(self, prof_name: str, weeks_list: List[Dict]) -> Dict[str, List]:
-        """Récupère tous les cours d'un professeur pour toutes les semaines"""
-        all_courses = self.schedule_manager.get_all_courses()
+        """Récupère tous les cours d'un professeur pour toutes les semaines avec cache"""
+        if hasattr(self.schedule_manager, 'perf_cache'):
+            all_courses = self.schedule_manager.perf_cache.get_cached_courses(self.schedule_manager)
+        else:
+            all_courses = self.schedule_manager.get_all_courses()
+
         room_mapping = self.load_room_mapping()
         professor_courses = {}
 

@@ -28,8 +28,19 @@ import io
 from services.pdf_export_service import PDFExportService
 from services.professor_view_service import ProfessorViewService
 from services.day_view_service import DayViewService
+from services.performance_cache_service import PerformanceCacheService
+from models import db
+from services.database_service import DatabaseService
+from services.migration_service import MigrationService
 
 app = Flask(__name__)
+
+# Configuration SQLite
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///schedule.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialiser la base de données
+db.init_app(app)
 
 # Désactiver le cache des templates en mode debug
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -85,6 +96,8 @@ class ScheduleManager:
         self.tp_management_service = TPManagementService()
         self.professor_view_service = ProfessorViewService(self)
         self.day_view_service = DayViewService(self)
+        self.perf_cache = PerformanceCacheService()
+        self.use_database = True  # Mode SQLite activé avec migration complète
 
         # Données en cache
         self.schedules = {}
@@ -162,7 +175,9 @@ class ScheduleManager:
         return result
 
     def get_all_courses(self) -> List[ProfessorCourse]:
-        """Récupère tous les cours via le service"""
+        """Récupère tous les cours avec fallback BDD/JSON"""
+        if self.use_database:
+            return DatabaseService.get_all_courses()
         return self.data_service.get_all_courses(self.canonical_schedules, self.custom_courses, self.room_assignments)
     
     def assign_room(self, course_id: str, room_id: str) -> bool:
@@ -312,11 +327,30 @@ class ScheduleManager:
 
     def get_normalized_professors_list(self) -> List[str]:
         """Retourne la liste des professeurs avec noms normalisés (sans doublons)."""
+        if self.use_database:
+            prof_names = DatabaseService.get_all_professors()
+        else:
+            prof_names = list(self.canonical_schedules.keys())
+
         normalized_names = set()
-        for prof_name in self.canonical_schedules.keys():
+        for prof_name in prof_names:
             normalized_name = normalize_professor_name(prof_name)
             normalized_names.add(normalized_name)
         return sorted(list(normalized_names))
+
+    def get_courses_by_week(self, week_name: str) -> List[ProfessorCourse]:
+        """Récupère les cours par semaine avec SQLite/JSON"""
+        if self.use_database:
+            return DatabaseService.get_courses_by_week(week_name)
+        # Fallback JSON simplifié
+        return [course for course in self.get_all_courses() if course.week_name == week_name]
+
+    def get_courses_by_professor(self, professor_name: str) -> List[ProfessorCourse]:
+        """Récupère les cours par professeur avec SQLite/JSON"""
+        if self.use_database:
+            return DatabaseService.get_courses_by_professor(professor_name)
+        # Fallback JSON simplifié
+        return [course for course in self.get_all_courses() if course.professor == professor_name]
 
 # Instance globale du gestionnaire
 schedule_manager = ScheduleManager()
@@ -1031,6 +1065,46 @@ def professor_by_id(prof_id):
 def get_all_professors_with_ids():
     """Retourne un dictionnaire {nom: id} pour tous les professeurs."""
     return ProfessorService.get_all_professors_with_ids()
+
+# Route de migration et benchmark
+@app.route('/migrate')
+def migrate_database():
+    """Route pour migrer les données JSON vers SQLite"""
+    try:
+        migration_service = MigrationService()
+        counters = migration_service.migrate_all_data()
+
+        # Test de performance après migration
+        migration_service.benchmark_queries()
+
+        return jsonify({
+            'success': True,
+            'message': 'Migration terminée',
+            'counters': counters
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/switch_to_db')
+def switch_to_database():
+    """Bascule vers le mode base de données"""
+    schedule_manager.use_database = True
+    return jsonify({
+        'success': True,
+        'message': 'Application basculée vers SQLite'
+    })
+
+@app.route('/switch_to_json')
+def switch_to_json():
+    """Bascule vers le mode JSON (fallback)"""
+    schedule_manager.use_database = False
+    return jsonify({
+        'success': True,
+        'message': 'Application basculée vers JSON'
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5005) 
