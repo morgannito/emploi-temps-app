@@ -32,6 +32,7 @@ from services.performance_cache_service import PerformanceCacheService
 from models import db
 from services.database_service import DatabaseService
 from services.migration_service import MigrationService
+from flask_caching import Cache
 
 app = Flask(__name__)
 
@@ -39,6 +40,11 @@ app = Flask(__name__)
 db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'schedule.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Configuration Flask-Caching
+app.config['CACHE_TYPE'] = 'simple'  # En mémoire pour dev
+app.config['CACHE_DEFAULT_TIMEOUT'] = 60  # 60s cache timeout
+cache = Cache(app)
 
 # Initialiser la base de données
 db.init_app(app)
@@ -782,11 +788,51 @@ def delete_professor():
     return jsonify(result)
 
 @app.route('/api/get_occupied_rooms', methods=['POST'])
+@cache.cached(timeout=60, key_prefix='occupied_rooms')
 def get_occupied_rooms():
     """API optimisée pour récupérer les salles occupées pour un créneau donné"""
     data = request.get_json()
-    result = room_api_service.get_occupied_rooms(data)
+
+    # Créer une clé de cache basée sur les données
+    cache_key = f"occupied_{data.get('course_id', '')}"
+
+    # Vérifier le cache manuel si nécessaire
+    result = cache.get(cache_key)
+    if result is None:
+        result = room_api_service.get_occupied_rooms(data)
+        cache.set(cache_key, result, timeout=60)
+        print(f"🔥 Cache MISS pour {cache_key}")
+    else:
+        print(f"⚡ Cache HIT pour {cache_key}")
+
     return jsonify(result)
+
+@app.route('/api/batch_occupied_rooms', methods=['POST'])
+def batch_occupied_rooms():
+    """API batch pour récupérer les salles occupées pour plusieurs créneaux en une fois"""
+    try:
+        data = request.get_json()
+        course_ids = data.get('course_ids', [])
+
+        if not course_ids:
+            return jsonify({'error': 'No course_ids provided'}), 400
+
+        results = {}
+        for course_id in course_ids:
+            # Récupérer les infos du cours depuis la DB
+            course_data = {'course_id': course_id}
+            result = room_api_service.get_occupied_rooms(course_data)
+            results[course_id] = result.get('occupied_rooms', [])
+
+        return jsonify({
+            'success': True,
+            'results': results,
+            'processed_count': len(course_ids)
+        })
+
+    except Exception as e:
+        print(f"❌ Erreur batch occupied rooms: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get_free_rooms', methods=['POST'])
 def get_free_rooms():

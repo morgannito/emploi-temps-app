@@ -1100,46 +1100,78 @@
         // IMPORTANT: Copie de tout le code JavaScript existant d'admin_new.html
         // pour maintenir toutes les fonctionnalités
 
-        // Cache avec TTL pour éviter les requêtes répétées
+        // Cache avec TTL et debouncing avancé pour éviter les requêtes répétées
         const occupiedRoomsCache = new Map();
-        const CACHE_TTL = 5000;
+        const CACHE_TTL = 30000; // 30s cache TTL
         let pendingRequests = new Map();
+        let debounceTimers = new Map();
+        const DEBOUNCE_DELAY = 150; // 150ms debounce
+
+        function debounce(func, delay, key) {
+            if (debounceTimers.has(key)) {
+                clearTimeout(debounceTimers.get(key));
+            }
+
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(async () => {
+                    try {
+                        const result = await func();
+                        resolve(result);
+                    } catch (error) {
+                        reject(error);
+                    } finally {
+                        debounceTimers.delete(key);
+                    }
+                }, delay);
+
+                debounceTimers.set(key, timer);
+            });
+        }
 
         async function getOccupiedRooms(courseId) {
             const now = Date.now();
 
+            // Vérifier le cache local
             if (occupiedRoomsCache.has(courseId)) {
                 const cached = occupiedRoomsCache.get(courseId);
                 if (now - cached.timestamp < CACHE_TTL) {
+                    console.log(`🚀 Cache HIT pour ${courseId}`);
                     return cached.data;
                 }
             }
 
+            // Vérifier les requêtes en cours
             if (pendingRequests.has(courseId)) {
+                console.log(`⏳ Requête en cours pour ${courseId}`);
                 return pendingRequests.get(courseId);
             }
 
-            const requestPromise = fetch('/api/get_occupied_rooms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ course_id: courseId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const occupiedRooms = data.occupied_rooms || [];
-                occupiedRoomsCache.set(courseId, {
-                    data: occupiedRooms,
-                    timestamp: now
+            // Utiliser debounce pour éviter les requêtes multiples rapides
+            const debouncedRequest = () => {
+                return fetch('/api/get_occupied_rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course_id: courseId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const occupiedRooms = data.occupied_rooms || [];
+                    occupiedRoomsCache.set(courseId, {
+                        data: occupiedRooms,
+                        timestamp: now
+                    });
+                    console.log(`📡 API appelée pour ${courseId}: ${occupiedRooms.length} salles occupées`);
+                    pendingRequests.delete(courseId);
+                    return occupiedRooms;
+                })
+                .catch(error => {
+                    console.error('Erreur salles occupées:', error);
+                    pendingRequests.delete(courseId);
+                    return [];
                 });
-                pendingRequests.delete(courseId);
-                return occupiedRooms;
-            })
-            .catch(error => {
-                console.error('Erreur lors de la récupération des salles occupées:', error);
-                pendingRequests.delete(courseId);
-                return [];
-            });
+            };
 
+            const requestPromise = debounce(debouncedRequest, DEBOUNCE_DELAY, courseId);
             pendingRequests.set(courseId, requestPromise);
             return requestPromise;
         }
