@@ -665,6 +665,9 @@
         </div>
     </div>
 
+    <!-- Include admin.js for ScheduleManager -->
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+
     <script>
     // SPA Manager - Navigation AJAX
     class AdminSPAManager {
@@ -793,6 +796,23 @@
             this.initializeRoomSelection();
             this.bindModalEvents();
             this.loadSavedTpNames();
+
+            // Vérifier si ScheduleManager existe (créé par admin.js)
+            console.log('SPA: Checking ScheduleManager availability...');
+            if (typeof ScheduleManager === 'undefined') {
+                console.warn('SPA: ScheduleManager class not found, room assignment may not work');
+                return;
+            }
+
+            // Utiliser l'instance existante ou en créer une nouvelle si nécessaire
+            if (!window.scheduleManager) {
+                console.log('SPA: Creating new ScheduleManager instance');
+                window.scheduleManager = new ScheduleManager();
+            } else {
+                console.log('SPA: ScheduleManager exists, reinitializing...');
+                // Réinitialiser sans recharger les données pour éviter les conflits
+                window.scheduleManager.bindEvents();
+            }
         }
 
         // Copie des fonctions existantes pour réinitialisation
@@ -865,14 +885,19 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         console.log('SPA: DOMContentLoaded event fired, initializing AdminSPAManager');
-        spaManager = new AdminSPAManager();
-        console.log('SPA: AdminSPAManager initialized:', spaManager);
+
+        // Attendre que admin.js ait créé ScheduleManager s'il le fait
+        setTimeout(() => {
+            spaManager = new AdminSPAManager();
+            console.log('SPA: AdminSPAManager initialized:', spaManager);
+            console.log('SPA: ScheduleManager status:', window.scheduleManager ? 'exists' : 'not found');
+        }, 100);
 
         // Gestion de l'historique du navigateur
         window.addEventListener('popstate', (e) => {
-            if (e.state && e.state.week) {
+            if (e.state && e.state.week && window.spaManager) {
                 document.getElementById('week-select').value = e.state.week;
-                spaManager.changeWeek(e.state.week);
+                window.spaManager.changeWeek(e.state.week);
             }
         });
 
@@ -980,7 +1005,9 @@
 
                     setTimeout(() => {
                         tempMessage.remove();
-                        spaManager.changeWeek(spaManager.currentWeek); // Recharger via SPA
+                        if (window.spaManager) {
+                            window.spaManager.changeWeek(window.spaManager.currentWeek); // Recharger via SPA
+                        }
                     }, 1000);
                 } else {
                     alert(data.error);
@@ -995,8 +1022,10 @@
         // Rendre la fonction globale
         window.assignRoom = assignRoom;
 
-        // Initialiser les fonctionnalités existantes
-        spaManager.initializeExistingFeatures();
+        // Initialiser les fonctionnalités existantes si spaManager existe
+        if (window.spaManager) {
+            window.spaManager.initializeExistingFeatures();
+        }
     });
     </script>
 </body>

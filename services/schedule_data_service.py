@@ -211,3 +211,54 @@ class ScheduleDataService:
         import hashlib
         raw_id = f"{week_name}_{prof_name}_{course_data['raw_time_slot']}_{index}"
         return f"course_{hashlib.md5(raw_id.encode()).hexdigest()[:16]}"
+
+    def sync_room_assignments_to_db(self, room_assignments: Dict[str, str]) -> int:
+        """Synchronise les attributions de salles du JSON vers la base de données SQLite"""
+        print(f"🔄 Début synchronisation DB: {len(room_assignments)} attributions JSON")
+
+        try:
+            # Import dynamique pour éviter import circulaire
+            import importlib
+            models_module = importlib.import_module('models')
+            Course = models_module.Course
+            CustomCourse = models_module.CustomCourse
+            db = models_module.db
+
+            updated_count = 0
+
+            # Synchroniser les cours normaux
+            for course_id, room_id in room_assignments.items():
+                # Chercher dans les cours normaux
+                normal_course = Course.query.filter_by(course_id=course_id).first()
+                if normal_course:
+                    if normal_course.assigned_room != room_id:
+                        normal_course.assigned_room = room_id
+                        updated_count += 1
+                        print(f"🔧 Cours normal mis à jour: {course_id} -> {room_id}")
+                    continue
+
+                # Chercher dans les cours personnalisés
+                custom_course = CustomCourse.query.filter_by(course_id=course_id).first()
+                if custom_course:
+                    if custom_course.assigned_room != room_id:
+                        custom_course.assigned_room = room_id
+                        updated_count += 1
+                        print(f"🔧 Cours personnalisé mis à jour: {course_id} -> {room_id}")
+                    continue
+
+                print(f"⚠️ Cours non trouvé en DB: {course_id}")
+
+            # Commit des changements
+            if updated_count > 0:
+                db.session.commit()
+                print(f"✅ Synchronisation terminée: {updated_count} cours mis à jour")
+            else:
+                print("ℹ️ Aucune mise à jour nécessaire")
+
+            return updated_count
+
+        except Exception as e:
+            print(f"❌ Erreur lors de la synchronisation DB: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
