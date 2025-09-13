@@ -1,0 +1,29 @@
+{
+    "equipment": [
+    {
+      "_id": "1",
+      "name": "Vidéoprojecteur",
+      "description": "Projecteur HD pour salle de classe"
+    },
+    {
+      "_id": "2",
+      "name": "Ordinateur",
+      "description": "Ordinateur portable pour enseignant"
+    },
+    {
+      "_id": "3",
+      "name": "Tableau interactif",
+      "description": "Tableau blanc interactif tactile"
+    },
+    {
+      "_id": "4",
+      "name": "Système audio",
+      "description": "Haut-parleurs et microphone pour présentations"
+    },
+    {
+      "_id": "5",
+      "name": "Équipement de laboratoire",
+      "description": "Matériel scientifique divers"
+    }
+  ]
+}

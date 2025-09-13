@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head><title>Professeurs - Test IDs</title></head>
+<body>
+<h1>Test des liens avec IDs</h1>
+
+<h2>Liens directs (hardcodés):</h2>
+<ul>
+<li><a href="http://172.19.202.13:5005/professor/id/a85ae1aa" target="_blank">M Bogaert (a85ae1aa)</a></li>
+<li><a href="http://172.19.202.13:5005/professor/id/844d0979" target="_blank">M Chemet snt (844d0979)</a></li>
+<li><a href="http://172.19.202.13:5005/professor/id/d06595b9" target="_blank">M Gau SNT (d06595b9)</a></li>
+</ul>
+
+<h2>Liens depuis les données (template):</h2>
+<p>prof_id_mapping contient {{ prof_id_mapping|length }} entrées</p>
+
+<ul>
+{% for prof_name, prof_data in summary.items() %}
+    {% if loop.index <= 3 %}
+    <li>
+        Prof: {{ prof_name }}<br>
+        ID dans mapping: {{ prof_id_mapping.get(prof_name, "PAS_TROUVÉ") }}<br>
+        <a href="http://172.19.202.13:5005/professor/id/{{ prof_id_mapping.get(prof_name, "unknown") }}">
+            Lien vers {{ prof_name }}
+        </a>
+    </li>
+    {% endif %}
+{% endfor %}
+</ul>
+
+<h2>Debug:</h2>
+<p>Clés de prof_id_mapping:</p>
+<ul>
+{% for key in prof_id_mapping.keys() %}
+    {% if loop.index <= 5 %}
+    <li>"{{ key }}"</li>
+    {% endif %}
+{% endfor %}
+</ul>
+
+</body>
+</html>

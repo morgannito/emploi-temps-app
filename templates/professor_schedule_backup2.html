@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emploi du temps - {{ professor_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .current-date {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .navigation-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+            white-space: nowrap;
+            position: relative;
+        }
+        
+        .tab-btn:hover {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+        
+        .tab-btn.current-week {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+            font-weight: bold;
+        }
+        
+        .tab-btn.current-week::after {
+            content: "Actuelle";
+            position: absolute;
+            top: -8px;
+            right: -5px;
+            background: #dc3545;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7em;
+        }
+        
+        .week-schedule {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .week-schedule.current {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+        
+        .week-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #3498db;
+        }
+        
+        .week-title {
+            font-size: 1.8em;
+            color: #2c3e50;
+        }
+        
+        .week-dates {
+            font-size: 1.1em;
+            color: #6c757d;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .day-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .day-header {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .course-item {
+            background: #f8f9fa;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            transition: transform 0.2s;
+        }
+        
+        .course-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .course-time {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .course-subject {
+            color: #2c3e50;
+            font-size: 1.05em;
+            margin-bottom: 5px;
+        }
+        
+        .course-room {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+        
+        .course-room.no-room {
+            background: #dc3545;
+        }
+        
+        .course-group {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        
+        .no-courses {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .empty-day {
+            text-align: center;
+            padding: 20px;
+            color: #adb5bd;
+            font-style: italic;
+        }
+        
+        .quick-nav {
+            position: fixed;
+            right: 30px;
+            bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .nav-btn {
+            background: #3498db;
+            color: white;
+            padding: 12px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            width: 50px;
+            height: 50px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .nav-btn.print {
+            background: #28a745;
+        }
+        
+        .nav-btn.top {
+            background: #6c757d;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+            .navigation-tabs, .quick-nav {
+                display: none;
+            }
+            .week-schedule {
+                page-break-after: always;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .days-grid {
+                grid-template-columns: 1fr;
+            }
+            .navigation-tabs {
+                flex-wrap: nowrap;
+                overflow-x: scroll;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Emploi du temps</h1>
+            <p>{{ professor_name }}</p>
+            <div class="current-date" id="currentDate"></div>
+        </div>
+        
+        <div class="content">
+            {% if professor_courses %}
+            
+            <!-- Navigation rapide -->
+            <div class="navigation-tabs">
+                {% for week in weeks_list %}
+                    {% if week.name in professor_courses %}
+                    <button class="tab-btn" id="btn-{{ week.name|replace(' ', '_')|replace('(', '')|replace(')', '') }}" 
+                            onclick="scrollToWeek('week-{{ week.name|replace(' ', '_')|replace('(', '')|replace(')', '') }}')">
+                        {{ week.name }}
+                    </button>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            <!-- Affichage de toutes les semaines -->
+            {% for week_name, courses in professor_courses.items() %}
+            {% set week_info = {} %}
+            {% for week in weeks_list %}
+                {% if week.name == week_name %}
+                    {% set _ = week_info.update(week) %}
+                {% endif %}
+            {% endfor %}
+            
+            <div class="week-schedule" id="week-{{ week_name|replace(' ', '_')|replace('(', '')|replace(')', '') }}">
+                <div class="week-header">
+                    <h2 class="week-title">{{ week_name }}</h2>
+                    <div class="week-dates">
+                        {% if week_info.date %}
+                        📅 Semaine du {{ week_info.date }}
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Organisation par jour -->
+                {% set days_data = {} %}
+                {% for course in courses %}
+                    {% if course.day not in days_data %}
+                        {% set _ = days_data.update({course.day: []}) %}
+                    {% endif %}
+                    {% set _ = days_data[course.day].append(course) %}
+                {% endfor %}
+                
+                <div class="days-grid">
+                    {% for day in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] %}
+                    <div class="day-card">
+                        <div class="day-header">{{ day }}</div>
+                        {% if day in days_data %}
+                            {% for course in days_data[day]|sort(attribute='start_time') %}
+                            <div class="course-item">
+                                <div class="course-time">⏰ {{ course.start_time }} - {{ course.end_time }}</div>
+                                <div class="course-subject">{{ course.subject }}</div>
+                                {% if course.tp_name %}
+                                <span class="course-group">{{ course.tp_name }}</span>
+                                {% endif %}
+                                <div class="course-room {% if course.room == 'Non attribuée' %}no-room{% endif %}">
+                                    📍 {{ course.room }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-day">Pas de cours</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% else %}
+            <div class="no-courses">
+                <h2>Aucun cours programmé</h2>
+                <p>Vous n'avez aucun cours programmé pour le moment.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Boutons de navigation rapide -->
+    <div class="quick-nav">
+        <button class="nav-btn print" onclick="window.print()" title="Imprimer">
+            🖨️
+        </button>
+        <button class="nav-btn top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Retour en haut">
+            ⬆️
+        </button>
+    </div>
+    
+    <script>
+        // Afficher la date actuelle
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = today.toLocaleDateString('fr-FR', options);
+        
+        // Déterminer la semaine actuelle
+        function getCurrentWeekNumber() {
+            const date = new Date();
+            const startDate = new Date(date.getFullYear(), 0, 1);
+            const days = Math.floor((date - startDate) / (24 * 60 * 60 * 1000));
+            return Math.ceil((date.getDay() + 1 + days) / 7);
+        }
+        
+        // Marquer la semaine actuelle
+        window.onload = function() {
+            const currentWeek = getCurrentWeekNumber();
+            const currentYear = new Date().getFullYear();
+            
+            // Déterminer le type de semaine (A ou B)
+            let weekType;
+            if (currentYear === 2025 && currentWeek >= 36) {
+                const weeksSinceStart = currentWeek - 36;
+                weekType = (weeksSinceStart % 2 === 0) ? 'A' : 'B';
+            } else if (currentYear === 2026 && currentWeek <= 35) {
+                const weeksSinceStart = 17 + currentWeek - 1;
+                weekType = (weeksSinceStart % 2 === 0) ? 'A' : 'B';
+            }
+            
+            // Identifier et marquer la semaine actuelle
+            const weekName = currentWeek < 10 ? 
+                `Semaine 0${currentWeek} ${weekType}` : 
+                `Semaine ${currentWeek} ${weekType}`;
+            
+            // Marquer le bouton de la semaine actuelle
+            const currentBtn = document.getElementById(`btn-${weekName.replace(/ /g, '_')}`);
+            if (currentBtn) {
+                currentBtn.classList.add('current-week');
+            }
+            
+            // Marquer la div de la semaine actuelle
+            const currentWeekDiv = document.getElementById(`week-${weekName.replace(/ /g, '_')}`);
+            if (currentWeekDiv) {
+                currentWeekDiv.classList.add('current');
+                // Scroll vers la semaine actuelle
+                setTimeout(() => {
+                    currentWeekDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 500);
+            }
+        };
+        
+        // Fonction pour naviguer vers une semaine
+        function scrollToWeek(weekId) {
+            const element = document.getElementById(weekId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    </script>
+</body>
+</html>

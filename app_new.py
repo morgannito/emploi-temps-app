@@ -1,0 +1,3084 @@
+import pytz
+from datetime import date, timedelta
+#!/usr/bin/env python3
+"""
+Application Flask pour l'attribution de salles aux professeurs
+basée sur leurs horaires extraits du fichier Excel
+"""
+
+from flask import Flask, render_template, request, jsonify, send_file
+import hashlib
+import json
+import os
+from datetime import datetime
+from typing import Dict, List, Optional
+from excel_parser import ExcelScheduleParser, normalize_professor_name
+from dataclasses import dataclass, asdict
+import re
+from functools import lru_cache
+import time
+from threading import RLock
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
+import io
+
+app = Flask(__name__)
+
+# Désactiver le cache des templates en mode debug
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+# Gestionnaire d'erreur pour les erreurs 500
+@app.errorhandler(500)
+def internal_error(error):
+    """Gestionnaire d'erreur pour les erreurs 500"""
+    app.logger.error(f'Erreur 500: {error}')
+    return render_template('error.html', error=error), 500
+
+# Gestionnaire d'erreur pour les erreurs 404
+@app.errorhandler(404)
+def not_found_error(error):
+    """Gestionnaire d'erreur pour les erreurs 404"""
+    app.logger.error(f'Erreur 404: {error}')
+    return render_template('error.html', error=error), 404
+
+PROF_COLORS = ["#e57373", "#81c784", "#64b5f6", "#fff176", "#ffb74d", "#ba68c8", "#4db6ac", "#f06292", "#a1887f"]
+
+# Cache pour les salles occupées avec TTL
+_occupied_rooms_cache = {}
+_cache_lock = RLock()
+_cache_ttl = 3  # 3 secondes de cache
+
+def _get_cache_key(course_id, week_name, day, start_time, end_time):
+    """Génère une clé de cache basée sur le créneau"""
+    return f"{week_name}_{day}_{start_time}_{end_time}"
+
+def _invalidate_occupied_rooms_cache():
+    """Invalide le cache des salles occupées"""
+    global _occupied_rooms_cache
+    with _cache_lock:
+        _occupied_rooms_cache.clear()
+
+
+@dataclass
+class ProfessorCourse:
+    """Représente un cours d'un professeur"""
+    professor: str
+    start_time: str
+    end_time: str
+    duration_hours: float
+    course_type: str
+    nb_students: str
+    assigned_room: Optional[str]
+    day: str
+    raw_time_slot: str
+    week_name: str
+    course_id: str
+
+class ScheduleManager:
+    """Gestionnaire des emplois du temps"""
+    
+    def __init__(self):
+        # Fichier pour l'assignation des salles (basé sur l'extraction brute)
+        self.schedules_file = "data/extracted_schedules.json"
+        
+        # Fichier pour l'édition des horaires des profs (canonique)
+        self.canonical_schedule_file = "data/professors_canonical_schedule.json"
+        
+        self.assignments_file = "data/room_assignments.json"
+        self.rooms_file = "data/salle.json"
+        self.prof_data_file = "data/prof_data.json"
+        self.custom_courses_file = "data/custom_courses.json"
+        
+        # Données
+        self.schedules = {} # Données brutes par semaine
+        self.canonical_schedules = {} # Données canoniques par prof
+        self.room_assignments = {}
+        self.rooms = []
+        self.prof_data = {} # Données spécifiques aux profs (couleur, etc.)
+        self.custom_courses = [] # Cours ajoutés manuellement
+        
+        self.load_data()
+    
+    def load_data(self):
+        """Charge toutes les données nécessaires"""
+        # Charger les données brutes pour l'assignation
+        if os.path.exists(self.schedules_file):
+            with open(self.schedules_file, 'r', encoding='utf-8') as f:
+                self.schedules = json.load(f)
+        
+        # Charger les données canoniques pour l'édition
+        if os.path.exists(self.canonical_schedule_file):
+            with open(self.canonical_schedule_file, 'r', encoding='utf-8') as f:
+                self.canonical_schedules = json.load(f)
+        else:
+            # Si le fichier n'existe pas, on initialise avec un dictionnaire vide.
+            # L'application dépend maintenant uniquement de ce fichier JSON.
+            self.canonical_schedules = {}
+        
+        # Charger les données des professeurs (couleurs)
+        if os.path.exists(self.prof_data_file):
+            with open(self.prof_data_file, 'r', encoding='utf-8') as f:
+                self.prof_data = json.load(f)
+
+        # Charger les cours personnalisés
+        if os.path.exists(self.custom_courses_file):
+            with open(self.custom_courses_file, 'r', encoding='utf-8') as f:
+                self.custom_courses = json.load(f)
+        
+        # Charger les attributions de salles et les salles
+        if os.path.exists(self.assignments_file):
+            with open(self.assignments_file, 'r', encoding='utf-8') as f:
+                self.room_assignments = json.load(f)
+        if os.path.exists(self.rooms_file):
+            with open(self.rooms_file, 'r', encoding='utf-8') as f:
+                rooms_data = json.load(f)
+                # Adapter la structure des données des salles
+                if 'rooms' in rooms_data:
+                    self.rooms = []
+                    for room in rooms_data['rooms']:
+                        adapted_room = {
+                            'id': room['_id'],
+                            'nom': room['name'],
+                            'capacite': room['capacity'],
+                            'equipement': room.get('equipment', '')
+                        }
+                        self.rooms.append(adapted_room)
+                else:
+                    self.rooms = rooms_data
+
+    def force_sync_data(self):
+        """Force la synchronisation des données avec un verrouillage pour éviter les conflits entre workers."""
+        import time
+        import fcntl
+        
+        lock_file = "data/.sync_lock"
+        max_wait = 5  # Attendre maximum 5 secondes
+        
+        try:
+            # Créer le répertoire data s'il n'existe pas
+            os.makedirs("data", exist_ok=True)
+            
+            # Essayer d'acquérir le verrou
+            with open(lock_file, 'w') as lock:
+                start_time = time.time()
+                while time.time() - start_time < max_wait:
+                    try:
+                        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except (IOError, OSError):
+                        time.sleep(0.1)
+                        continue
+                else:
+                    # Timeout - on continue sans verrou
+                    print("Warning: Impossible d'acquérir le verrou de synchronisation")
+                    self.reload_data()
+                    return True
+                
+                try:
+                    # Recharger les données avec le verrou
+                    self.reload_data()
+                    
+                    # Créer un fichier de timestamp pour indiquer la dernière synchronisation
+                    sync_file = "data/.last_sync"
+                    with open(sync_file, 'w') as f:
+                        f.write(str(time.time()))
+                    
+                    return True
+                finally:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+                    
+        except Exception as e:
+            print(f"Erreur lors de la synchronisation forcée: {e}")
+            # Fallback vers le rechargement simple
+            return self.reload_data()
+
+    def reload_data(self):
+        """Force le rechargement des données depuis les fichiers."""
+        try:
+            # Recharger les emplois du temps canoniques
+            if os.path.exists(self.canonical_schedule_file):
+                with open(self.canonical_schedule_file, 'r', encoding='utf-8') as f:
+                    self.canonical_schedules = json.load(f)
+            
+            # Recharger les attributions de salles
+            if os.path.exists(self.assignments_file):
+                with open(self.assignments_file, 'r', encoding='utf-8') as f:
+                    self.room_assignments = json.load(f)
+            
+            # Recharger les cours personnalisés
+            if os.path.exists(self.custom_courses_file):
+                with open(self.custom_courses_file, 'r', encoding='utf-8') as f:
+                    self.custom_courses = json.load(f)
+            
+            # Invalider le cache des salles occupées
+            _invalidate_occupied_rooms_cache()
+            
+            return True
+        except Exception as e:
+            print(f"Erreur lors du rechargement des données: {e}")
+            return False
+
+    def get_prof_color(self, prof_name: str) -> str:
+        """Récupère la couleur d'un prof, ou en assigne une nouvelle."""
+        if prof_name in self.prof_data and 'color' in self.prof_data[prof_name]:
+            return self.prof_data[prof_name]['color']
+        
+        # Assigner une couleur par défaut si aucune n'est trouvée
+        color_index = hash(prof_name) % len(PROF_COLORS)
+        new_color = PROF_COLORS[color_index]
+        
+        # Mettre à jour la structure de données et la sauvegarder
+        if prof_name not in self.prof_data:
+            self.prof_data[prof_name] = {}
+        self.prof_data[prof_name]['color'] = new_color
+        
+        self.save_prof_data()
+        return new_color
+
+    def update_prof_color(self, prof_name: str, color: str) -> bool:
+        """Met à jour la couleur d'un professeur."""
+        if color not in PROF_COLORS:
+            return False # Couleur invalide
+            
+        if prof_name not in self.prof_data:
+            self.prof_data[prof_name] = {}
+        
+        self.prof_data[prof_name]['color'] = color
+        self.save_prof_data()
+        return True
+
+    def save_prof_data(self):
+        """Sauvegarde le fichier de données des professeurs."""
+        with open(self.prof_data_file, 'w', encoding='utf-8') as f:
+            json.dump(self.prof_data, f, indent=2, ensure_ascii=False)
+
+    def get_canonical_schedules_summary(self):
+        """Calcule un résumé des heures de cours pour chaque prof."""
+        summary = {}
+        normalized_profs = {}
+        
+        # Normaliser les noms et regrouper les cours
+        for prof, prof_data in self.canonical_schedules.items():
+            normalized_name = normalize_professor_name(prof)
+            
+            if normalized_name not in normalized_profs:
+                normalized_profs[normalized_name] = []
+            
+            courses = prof_data['courses'] if isinstance(prof_data, dict) else prof_data
+            normalized_profs[normalized_name].extend(courses)
+        
+        # Calculer les résumés pour les noms normalisés
+        for prof, courses in normalized_profs.items():
+            total_hours = sum(c.get('duration_hours', 0) for c in courses)
+            
+            days_summary = {}
+            for day in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']:
+                day_hours = sum(c.get('duration_hours', 0) for c in courses if c.get('day') == day)
+                if day_hours > 0:
+                    days_summary[day] = f"{day_hours:.1f}h"
+
+            summary[prof] = {
+                'total_hours': f"{total_hours:.1f}h",
+                'days': days_summary,
+                'color': self.get_prof_color(prof)
+            }
+        # Tri alphabétique des professeurs
+        sorted_summary = dict(sorted(summary.items()))
+        return sorted_summary
+
+    def add_professor(self, prof_name: str) -> bool:
+        """Ajoute un nouveau professeur avec un emploi du temps vide."""
+        if prof_name in self.canonical_schedules:
+            return False  # Le professeur existe déjà
+        
+        self.canonical_schedules[prof_name] = {'courses': [], 'color': None, 'preferences': {}}
+        
+        # Auto-générer ID
+        prof_id = hashlib.md5(prof_name.encode()).hexdigest()[:8]
+        prof_id_mapping_file = "data/prof_id_mapping.json"
+        
+        # Charger et mettre à jour le mapping des IDs
+        if os.path.exists(prof_id_mapping_file):
+            with open(prof_id_mapping_file, "r", encoding="utf-8") as f:
+                prof_id_mapping = json.load(f)
+        else:
+            prof_id_mapping = {}
+        
+        prof_id_mapping[prof_name] = prof_id
+        
+        with open(prof_id_mapping_file, "w", encoding="utf-8") as f:
+            json.dump(prof_id_mapping, f, indent=2, ensure_ascii=False)
+        
+        # Sauvegarder les modifications du canonical_schedules
+        with open(self.canonical_schedule_file, 'w', encoding='utf-8') as f:
+            json.dump(self.canonical_schedules, f, indent=2, ensure_ascii=False)
+        return True
+
+    def delete_professor(self, prof_name: str) -> bool:
+        """Supprime un professeur et son emploi du temps."""
+        if prof_name in self.canonical_schedules:
+            del self.canonical_schedules[prof_name]
+            # Sauvegarder les modifications
+            with open(self.canonical_schedule_file, 'w', encoding='utf-8') as f:
+                json.dump(self.canonical_schedules, f, indent=2, ensure_ascii=False)
+            return True
+        return False  # Le professeur n'a pas été trouvé
+
+    def get_prof_schedule(self, prof_name: str) -> List[Dict]:
+        """Récupère l'emploi du temps canonique d'un professeur."""
+        prof_data = self.canonical_schedules.get(prof_name, {})
+        return prof_data.get('courses', []) if isinstance(prof_data, dict) else prof_data
+
+    def update_prof_schedule(self, prof_name: str, courses: List[Dict]):
+        """Met à jour l'emploi du temps canonique d'un professeur."""
+        if prof_name not in self.canonical_schedules:
+            self.canonical_schedules[prof_name] = {'courses': [], 'color': None, 'preferences': {}}
+        self.canonical_schedules[prof_name]['courses'] = courses
+        with open(self.canonical_schedule_file, 'w', encoding='utf-8') as f:
+            json.dump(self.canonical_schedules, f, indent=2, ensure_ascii=False)
+        return True
+
+    def get_all_courses(self) -> List[ProfessorCourse]:
+        """Récupère tous les cours (basé sur les emplois du temps canoniques)."""
+        courses = []
+        
+        # Générer les semaines académiques pour créer des cours pour chaque semaine
+        def generate_academic_weeks():
+            weeks = []
+            is_type_A = True
+            for week_num in range(36, 53):
+                week_type = "A" if is_type_A else "B"
+                weeks.append(f"Semaine {week_num} {week_type}")
+                is_type_A = not is_type_A
+            for week_num in range(1, 36):
+                week_type = "A" if is_type_A else "B"
+                weeks.append(f"Semaine {week_num:02d} {week_type}")
+                is_type_A = not is_type_A
+            return weeks
+        
+        academic_weeks = generate_academic_weeks()
+        
+        # Pour chaque professeur et chaque semaine, créer les cours
+        for prof_name, prof_courses in self.canonical_schedules.items():
+            for week_name in academic_weeks:
+                for i, course_data in enumerate(prof_courses['courses']):
+                    # L'ID doit être unique et déterministe
+                    raw_id = f"{week_name}_{prof_name}_{course_data['raw_time_slot']}_{i}"
+                    course_id = f"course_{hashlib.md5(raw_id.encode()).hexdigest()[:16]}"
+                    
+                    # Utiliser l'attribution sauvegardée si elle existe
+                    assigned_room = self.room_assignments.get(course_id, course_data.get('assigned_room'))
+                    
+                    course = ProfessorCourse(
+                        professor=prof_name,
+                        start_time=course_data['start_time'],
+                        end_time=course_data['end_time'],
+                        duration_hours=course_data['duration_hours'],
+                        course_type=course_data['course_type'],
+                        nb_students=course_data['nb_students'],
+                        assigned_room=assigned_room,
+                        day=course_data['day'],
+                        raw_time_slot=course_data['raw_time_slot'],
+                        week_name=week_name,
+                        course_id=course_id
+                    )
+                    courses.append(course)
+        
+        # Ajouter les cours personnalisés à la liste
+        for custom_course in self.custom_courses:
+            course_id = custom_course['course_id']
+            assigned_room = self.room_assignments.get(course_id)
+            
+            course = ProfessorCourse(
+                professor=custom_course['professor'],
+                start_time=custom_course['start_time'],
+                end_time=custom_course['end_time'],
+                duration_hours=custom_course['duration_hours'],
+                course_type=custom_course['course_type'],
+                nb_students=custom_course.get('nb_students', 'N/A'),
+                assigned_room=assigned_room,
+                day=custom_course['day'],
+                raw_time_slot=custom_course['raw_time_slot'],
+                week_name=custom_course['week_name'],
+                course_id=course_id
+            )
+            courses.append(course)
+        
+        return courses
+    
+    def assign_room(self, course_id: str, room_id: str) -> bool:
+        """
+        Attribue une salle à un cours
+        
+        Args:
+            course_id: Identifiant du cours
+            room_id: Identifiant de la salle
+            
+        Returns:
+            True si l'attribution a réussi
+        """
+        try:
+            # Vérifier les conflits
+            if self.check_room_conflict(course_id, room_id):
+                return False
+            
+            # Attribuer la salle
+            self.room_assignments[course_id] = room_id
+            
+            # Sauvegarder
+            self.save_assignments()
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Erreur lors de l'attribution: {e}")
+            return False
+    
+    def check_room_conflict(self, course_id: str, room_id: str) -> bool:
+        """
+        Vérifie s'il y a un conflit de salle
+        
+        Args:
+            course_id: Identifiant du cours
+            room_id: Identifiant de la salle
+            
+        Returns:
+            True s'il y a un conflit
+        """
+        courses = self.get_all_courses()
+        current_course = None
+        
+        # Trouver le cours actuel
+        for course in courses:
+            if course.course_id == course_id:
+                current_course = course
+                break
+        
+        if not current_course:
+            return True  # Cours non trouvé = conflit
+        
+        # Vérifier les autres cours
+        for course in courses:
+            if (course.course_id != course_id and 
+                course.assigned_room == room_id and
+                course.week_name == current_course.week_name and
+                course.day == current_course.day):
+                
+                # Vérifier le chevauchement horaire
+                if self.times_overlap(
+                    current_course.start_time, current_course.end_time,
+                    course.start_time, course.end_time
+                ):
+                    return True  # Conflit détecté
+        
+        return False  # Pas de conflit
+    
+
+    def check_room_conflict_detailed(self, course_id: str, room_id: str) -> dict:
+        """Vérifie s'il y a un conflit de salle avec détails"""
+        courses = self.get_all_courses()
+        current_course = None
+        conflicts = []
+        
+        # Trouver le cours actuel
+        for course in courses:
+            if course.course_id == course_id:
+                current_course = course
+                break
+        
+        if not current_course:
+            return {
+                'has_conflict': True,
+                'conflicts': [{'type': 'course_not_found', 'message': 'Cours non trouvé'}]
+            }
+        
+        # Vérifier les autres cours
+        for course in courses:
+            if (course.course_id != course_id and 
+                course.assigned_room == room_id and
+                course.week_name == current_course.week_name and
+                course.day == current_course.day):
+                
+                # Vérifier le chevauchement horaire
+                if self.times_overlap(
+                    current_course.start_time, current_course.end_time,
+                    course.start_time, course.end_time
+                ):
+                    conflicts.append({
+                        'type': 'time_overlap',
+                        'conflicting_professor': course.professor,
+                        'conflicting_time': f"{course.start_time}-{course.end_time}",
+                        'conflicting_class': getattr(course, 'class_name', 'N/A'),
+                        'message': f"Conflit avec {course.professor} ({course.start_time}-{course.end_time})"
+                    })
+        
+        return {
+            'has_conflict': len(conflicts) > 0,
+            'conflicts': conflicts
+        }
+
+    def times_overlap(self, start1: str, end1: str, start2: str, end2: str) -> bool:
+        """Vérifie si deux créneaux horaires se chevauchent"""
+        start1_min = TimeSlotService.time_to_minutes(start1)
+        end1_min = TimeSlotService.time_to_minutes(end1)
+        start2_min = TimeSlotService.time_to_minutes(start2)
+        end2_min = TimeSlotService.time_to_minutes(end2)
+        
+        return not (end1_min <= start2_min or end2_min <= start1_min)
+    
+    def save_assignments(self):
+        """Sauvegarde les attributions de salles"""
+        with open(self.assignments_file, 'w', encoding='utf-8') as f:
+            json.dump(self.room_assignments, f, indent=2, ensure_ascii=False)
+    
+    def get_room_name(self, room_id: str) -> str:
+        """Récupère le nom d'une salle par son ID"""
+        if not room_id:
+            return ""
+        
+        for room in self.rooms:
+            if str(room.get('id')) == str(room_id):
+                return room.get('nom', room_id)
+        
+        return room_id
+
+    def add_custom_course(self, course_data: Dict) -> str:
+        """Ajoute un cours personnalisé (TP) et retourne son ID."""
+        # Générer un ID unique pour ce cours
+        course_id = f"custom_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+        course_data['course_id'] = course_id
+        
+        # Parser l'horaire pour extraire les détails
+        parser = ExcelScheduleParser()
+        time_info = parser.parse_time_range(course_data.get('raw_time_slot', ''))
+        if time_info:
+            course_data['start_time'], course_data['end_time'], course_data['duration_hours'] = time_info
+        else:
+            course_data['start_time'], course_data['end_time'], course_data['duration_hours'] = "00:00", "00:00", 0
+        
+        self.custom_courses.append(course_data)
+        self.save_custom_courses()
+        return course_id
+
+    def save_custom_courses(self):
+        """Sauvegarde les cours personnalisés dans leur fichier."""
+        with open(self.custom_courses_file, 'w', encoding='utf-8') as f:
+            json.dump(self.custom_courses, f, indent=2, ensure_ascii=False)
+
+    def save_tp_name(self, course_id: str, tp_name: str) -> bool:
+        """Sauvegarde le nom d'un TP pour un cours donné."""
+        try:
+            # Créer le répertoire data s'il n'existe pas
+            os.makedirs("data", exist_ok=True)
+            
+            tp_names_file = "data/tp_names.json"
+            
+            # Charger les noms de TP existants
+            tp_names = {}
+            if os.path.exists(tp_names_file):
+                with open(tp_names_file, 'r', encoding='utf-8') as f:
+                    tp_names = json.load(f)
+            
+            # Mettre à jour ou ajouter le nom du TP
+            tp_names[course_id] = tp_name
+            
+            # Sauvegarder
+            with open(tp_names_file, 'w', encoding='utf-8') as f:
+                json.dump(tp_names, f, indent=2, ensure_ascii=False)
+            
+            return True
+        except Exception as e:
+            print(f"Erreur lors de la sauvegarde du nom de TP: {e}")
+            return False
+
+    def get_all_tp_names(self) -> Dict[str, str]:
+        """Récupère tous les noms de TP sauvegardés."""
+        try:
+            tp_names_file = "data/tp_names.json"
+            if os.path.exists(tp_names_file):
+                with open(tp_names_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return {}
+        except Exception as e:
+            print(f"Erreur lors du chargement des noms de TP: {e}")
+            return {}
+
+    def get_tp_name(self, course_id: str) -> str:
+        """Récupère le nom d'un TP pour un cours donné."""
+        tp_names = self.get_all_tp_names()
+        return tp_names.get(course_id, '')
+
+    def delete_tp_name(self, course_id: str) -> bool:
+        """Supprime le nom d'un TP pour un cours donné."""
+        try:
+            tp_names_file = "data/tp_names.json"
+            
+            if os.path.exists(tp_names_file):
+                with open(tp_names_file, 'r', encoding='utf-8') as f:
+                    tp_names = json.load(f)
+                
+                # Supprimer le nom du TP
+                if course_id in tp_names:
+                    del tp_names[course_id]
+                    
+                    # Sauvegarder le fichier mis à jour
+                    with open(tp_names_file, 'w', encoding='utf-8') as f:
+                        json.dump(tp_names, f, indent=2, ensure_ascii=False)
+                    
+                    return True
+                else:
+                    # Le nom du TP n'existait pas, considérer comme supprimé
+                    return True
+            else:
+                # Le fichier n'existe pas, considérer comme supprimé
+                return True
+                
+        except Exception as e:
+            print(f"Erreur lors de la suppression du nom de TP: {e}")
+            return False
+
+    def move_custom_course(self, course_id: str, new_day: str, new_week: str) -> bool:
+        """Déplace un cours personnalisé vers un autre jour/semaine."""
+        course_found = False
+        for course in self.custom_courses:
+            if course.get('course_id') == course_id:
+                course['day'] = new_day
+                course['week_name'] = new_week
+                course_found = True
+                break
+        
+        if course_found:
+            self.save_custom_courses()
+            return True
+        return False
+
+    def get_prof_working_days(self) -> Dict[str, List[str]]:
+        """Retourne un dictionnaire des jours travaillés pour chaque professeur."""
+        working_days = {}
+        for prof_name, prof_data in self.canonical_schedules.items():
+            days = sorted(list(set(c.get('day') for c in prof_data['courses'] if c.get('day') not in [None, 'Indéterminé'])))
+            working_days[prof_name] = days
+        return working_days
+
+    def get_normalized_professors_list(self) -> List[str]:
+        """Retourne la liste des professeurs avec noms normalisés (sans doublons)."""
+        normalized_names = set()
+        for prof_name in self.canonical_schedules.keys():
+            normalized_name = normalize_professor_name(prof_name)
+            normalized_names.add(normalized_name)
+        return sorted(list(normalized_names))
+
+# Instance globale du gestionnaire
+schedule_manager = ScheduleManager()
+
+from services.week_service import WeekService
+from services.timeslot_service import TimeSlotService
+from services.course_grid_service import CourseGridService
+from services.professor_service import ProfessorService
+
+@app.route('/')
+@app.route('/week/<week_name>')
+def admin(week_name=None):
+    """Page d'administration principale (attribution des salles) avec vue hebdomadaire."""
+    # Forcer la synchronisation des données en production
+    schedule_manager.force_sync_data()
+
+    # Vérifier la cohérence des données
+    try:
+        # Vérifier que les attributions de salles sont cohérentes
+        all_courses = schedule_manager.get_all_courses()
+        room_assignments_count = len(schedule_manager.room_assignments)
+        courses_with_rooms = sum(1 for c in all_courses if c.assigned_room)
+
+        if abs(room_assignments_count - courses_with_rooms) > 5:  # Tolérance de 5
+            print(f"Warning: Incohérence détectée - Attributions: {room_assignments_count}, Cours avec salles: {courses_with_rooms}")
+            # Forcer une nouvelle synchronisation
+            schedule_manager.force_sync_data()
+    except Exception as e:
+        print(f"Erreur lors de la vérification de cohérence: {e}")
+
+    # Utiliser les services pour générer les données
+    weeks_to_display = WeekService.generate_academic_calendar()
+
+    if not weeks_to_display:
+        return "Erreur lors de la génération du calendrier.", 500
+
+    # Déterminer la semaine à afficher
+    if week_name is None:
+        week_name = WeekService.get_current_week_name(weeks_to_display)
+
+    # Trouver les informations de la semaine
+    current_week_info = WeekService.find_week_info(week_name, weeks_to_display)
+    if not current_week_info:
+        # Fallback si la semaine n'est pas trouvée
+        current_week_info = weeks_to_display[0]
+        week_name = current_week_info['name']
+
+    # Générer la grille horaire et l'ordre des jours
+    time_slots = TimeSlotService.generate_time_grid()
+    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+
+    # Préparer les cours pour la semaine
+    all_courses_for_week = CourseGridService.prepare_courses_for_week(schedule_manager, week_name)
+
+    # Préparer les cours avec les TPs attachés
+    courses_to_place_in_grid = CourseGridService.prepare_courses_with_tps(all_courses_for_week)
+
+    # Construire la grille hebdomadaire
+    weekly_grid = CourseGridService.build_weekly_grid(courses_to_place_in_grid, time_slots, days_order)
+
+    return render_template('admin_new.html', 
+                         weekly_grid=weekly_grid,
+                         time_slots=time_slots,
+                         days_order=days_order,
+                         rooms=schedule_manager.rooms,
+                         get_room_name=schedule_manager.get_room_name,
+                         all_weeks=weeks_to_display,
+                         current_week=week_name,
+                         current_week_info=current_week_info,
+                         all_professors=schedule_manager.get_normalized_professors_list())
+
+@app.route('/planning')
+@app.route('/planning/<week_name>')
+def planning_readonly(week_name=None):
+    """Vue planning en lecture seule (sans possibilité de modification)."""
+    # Forcer la synchronisation des données
+    schedule_manager.force_sync_data()
+    
+    def generate_academic_calendar():
+        """Génère une liste de semaines alternant A et B pour toute l'année scolaire avec dates."""
+        
+        weeks = []
+        is_type_A = True  # On commence par une semaine de type A
+        
+        # Date de début de l'année scolaire
+        start_date = date(2025, 9, 1)  # Lundi 1er septembre 2025
+        
+        # Première partie de l'année (septembre à décembre) - Semaines 36-52
+        for week_num in range(36, 53):
+            week_type = "A" if is_type_A else "B"
+            
+            # Calculer la date du lundi de cette semaine
+            week_offset = (week_num - 36) * 7  # 7 jours par semaine
+            monday_date = start_date + timedelta(days=week_offset)
+            
+            # Formater la date
+            date_str = monday_date.strftime("%d/%m/%Y")
+            
+            weeks.append({
+                'name': f"Semaine {week_num:02d} {week_type}",
+                'date': date_str,
+                'full_name': f"Semaine {week_num:02d} {week_type} ({date_str})"
+            })
+            is_type_A = not is_type_A
+        
+        # Deuxième partie (janvier à juin) - Semaines 1-25
+        new_year_start = date(2026, 1, 5)  # Premier lundi de janvier 2026
+        
+        for week_num in range(1, 36):
+            week_type = "A" if is_type_A else "B"
+            
+            # Calculer la date du lundi de cette semaine
+            week_offset = (week_num - 1) * 7
+            monday_date = new_year_start + timedelta(days=week_offset)
+            
+            # Formater la date
+            date_str = monday_date.strftime("%d/%m/%Y")
+            
+            weeks.append({
+                'name': f"Semaine {week_num:02d} {week_type}",
+                'date': date_str,
+                'full_name': f"Semaine {week_num:02d} {week_type} ({date_str})"
+            })
+            is_type_A = not is_type_A
+        
+        return weeks
+    
+    # Récupérer toutes les semaines disponibles
+    # Récupérer toutes les semaines disponibles
+    all_courses = schedule_manager.get_all_courses()
+    available_weeks = sorted(set([c.week_name for c in all_courses]))
+    
+    # Si aucune semaine n'est spécifiée, déterminer la semaine courante
+    if not week_name:
+        
+        # Date actuelle
+        today = datetime.now(pytz.timezone("Europe/Paris")).date()
+        
+        # Date de début de l'année scolaire (1er septembre 2025)
+        school_start = date(2025, 9, 1)  # Lundi 1er septembre 2025
+        
+        # Si on est avant septembre 2025, prendre la première semaine
+        if today < school_start:
+            week_name = available_weeks[0] if available_weeks else "Semaine 36 A"
+        else:
+            # Calculer le nombre de semaines depuis le début
+            days_since_start = (today - school_start).days
+            weeks_since_start = days_since_start // 7
+            
+            # Déterminer la semaine courante
+            if weeks_since_start < 17:  # Première partie (septembre-décembre)
+                week_num = 36 + weeks_since_start
+                week_type = "A" if weeks_since_start % 2 == 0 else "B"
+                
+                if week_num <= 52:
+                    current_week = f"Semaine {week_num:02d} {week_type}"
+                else:
+                    # Janvier - calculer depuis le 5 janvier 2026
+                    new_year_start = date(2026, 1, 5)
+                    if today >= new_year_start:
+                        days_since_new_year = (today - new_year_start).days
+                        weeks_since_new_year = days_since_new_year // 7
+                        
+                        week_num = 1 + weeks_since_new_year
+                        # Continuer l'alternance depuis décembre
+                        week_type = "B" if weeks_since_new_year % 2 == 0 else "A"
+                        
+                        if week_num <= 35:
+                            current_week = f"Semaine {week_num:02d} {week_type}"
+                        else:
+                            current_week = "Semaine 35 B"
+                    else:
+                        current_week = "Semaine 52 A"
+            else:
+                # Janvier 2026 et après
+                new_year_start = date(2026, 1, 5)
+                if today >= new_year_start:
+                    days_since_new_year = (today - new_year_start).days
+                    weeks_since_new_year = days_since_new_year // 7
+                    
+                    week_num = 1 + weeks_since_new_year
+                    # L'alternance continue depuis décembre
+                    week_type = "B" if weeks_since_new_year % 2 == 0 else "A"
+                    
+                    if week_num <= 35:
+                        current_week = f"Semaine {week_num:02d} {week_type}"
+                    else:
+                        current_week = "Semaine 35 B"
+                else:
+                    current_week = "Semaine 52 A"
+            
+            # Vérifier si la semaine calculée existe dans les données
+            if current_week in available_weeks:
+                week_name = current_week
+            else:
+                # Si la semaine calculée n'existe pas, prendre la première disponible
+                week_name = available_weeks[0] if available_weeks else "Semaine 37 B"
+    
+    # Récupérer les informations de la semaine
+    academic_calendar = generate_academic_calendar()
+    current_week_info = next((w for w in academic_calendar if w['name'] == week_name), None)
+
+    academic_calendar = generate_academic_calendar()
+    current_week_info = next((w for w in academic_calendar if w['name'] == week_name), None)
+    
+    # Filtrer les cours pour la semaine sélectionnée
+    week_courses = [c for c in all_courses if c.week_name == week_name]
+    
+    # Organiser les cours par jour et heure pour l'affichage
+    courses_by_day_time = {}
+    for course in week_courses:
+        key = f"{course.day}_{course.start_time}"
+        courses_by_day_time[key] = course
+    
+    # Créer une structure de données pour l'affichage
+    days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+    time_slots = []
+    for hour in range(8, 18):
+        time_slots.append(f"{hour}h-{hour+1}h")
+    # Charger les données des salles et créer le mapping
+    import json
+    import os
+    rooms_data = []
+    room_mapping = {}
+    try:
+        salle_path = os.path.join(os.path.dirname(__file__), 'data', 'salle.json')
+        with open(salle_path, 'r', encoding='utf-8') as f:
+            salle_data = json.load(f)
+            rooms_data = salle_data.get('rooms', [])
+            # Créer le mapping ID -> Nom
+            for room in rooms_data:
+                room_mapping[room['_id']] = room['name']
+    except FileNotFoundError:
+        pass
+    
+    # Convertir les IDs de salles en noms pour chaque cours
+    for course in week_courses:
+        if course.assigned_room:
+            # Remplacer l'ID par le nom de la salle
+            course.assigned_room = room_mapping.get(course.assigned_room, f"Salle {course.assigned_room}")
+    
+    return render_template('planning_readonly.html', 
+                         week_name=week_name,
+                         weeks_to_display=academic_calendar,
+                         current_week_info=current_week_info,
+                         courses=week_courses,
+                         courses_by_day_time=courses_by_day_time,
+                         days=days,
+                         time_slots=time_slots,
+                         rooms=rooms_data,
+                         all_weeks=academic_calendar,
+                         current_week=week_name,
+                         all_professors=schedule_manager.get_normalized_professors_list())
+
+
+
+
+@app.route("/planning_v2")
+@app.route("/planning_v2/<week_name>")
+def planning_v2(week_name=None):
+    """Planning V2 - Même affichage que la route principale mais en lecture seule"""
+    # Forcer la synchronisation des données en production
+    schedule_manager.force_sync_data()
+    
+    # Vérifier la cohérence des données
+    try:
+        # Vérifier que les attributions de salles sont cohérentes
+        all_courses = schedule_manager.get_all_courses()
+        room_assignments_count = len(schedule_manager.room_assignments)
+        courses_with_rooms = sum(1 for c in all_courses if c.assigned_room)
+        
+        if abs(room_assignments_count - courses_with_rooms) > 5:  # Tolérance de 5
+            print(f"Warning: Incohérence détectée - Attributions: {room_assignments_count}, Cours avec salles: {courses_with_rooms}")
+            # Forcer une nouvelle synchronisation
+            schedule_manager.force_sync_data()
+    except Exception as e:
+        print(f"Erreur lors de la vérification de cohérence: {e}")
+    
+    def generate_academic_calendar():
+        """Génère une liste de semaines alternant A et B pour toute l'année scolaire avec dates."""
+        
+        weeks = []
+        is_type_A = True  # On commence par une semaine de type A
+        
+        # Date de début de l'année scolaire (dernière semaine d'août 2025)
+        # Semaine 36 commence le 1er septembre 2025
+        start_date = date(2025, 9, 1)  # Lundi 1er septembre 2025
+        
+        # Première partie de l'année (septembre à décembre) - Semaines 36-52
+        for week_num in range(36, 53):
+            week_type = "A" if is_type_A else "B"
+            
+            # Calculer la date du lundi de cette semaine
+            week_offset = (week_num - 36) * 7  # 7 jours par semaine
+            monday_date = start_date + timedelta(days=week_offset)
+            
+            # Formater la date
+            date_str = monday_date.strftime("%d/%m/%Y")
+            
+            weeks.append({
+                'name': f"Semaine {week_num} {week_type}",
+                'date': date_str,
+                'full_name': f"Semaine {week_num} {week_type} ({date_str})"
+            })
+            is_type_A = not is_type_A
+            
+        # Deuxième partie de l'année (janvier à juin) - Semaines 1-35
+        # Continuer à partir de la semaine 1 (janvier 2026)
+        for week_num in range(1, 36):
+            week_type = "A" if is_type_A else "B"
+            
+            # Calculer la date du lundi de cette semaine
+            # Semaine 1 commence le 5 janvier 2026
+            january_start = date(2026, 1, 5)  # Lundi 5 janvier 2026
+            week_offset = (week_num - 1) * 7
+            monday_date = january_start + timedelta(days=week_offset)
+            
+            # Formater la date
+            date_str = monday_date.strftime("%d/%m/%Y")
+            
+            weeks.append({
+                'name': f"Semaine {week_num:02d} {week_type}",
+                'date': date_str,
+                'full_name': f"Semaine {week_num:02d} {week_type} ({date_str})"
+            })
+            is_type_A = not is_type_A
+            
+        return weeks
+    
+    def generate_time_grid():
+        """Génère une grille horaire de 8h à 18h avec créneaux d'1 heure"""
+        time_slots = []
+        for hour in range(8, 18):
+            start_time = f"{hour:02d}:00"
+            end_time = f"{hour+1:02d}:00"
+            time_slots.append({
+                'start_time': start_time,
+                'end_time': end_time,
+                'label': f"{hour}h-{hour+1}h"
+            })
+        return time_slots
+    
+    weeks_to_display = generate_academic_calendar()
+    
+    if not weeks_to_display:
+        return "Erreur lors de la génération du calendrier.", 500
+    
+    # Si aucune semaine n'est spécifiée, déterminer la semaine actuelle
+    if week_name is None:
+        today = datetime.now(pytz.timezone("Europe/Paris")).date()
+        week_num = today.isocalendar()[1]
+        
+        # Déterminer le type de semaine (A ou B) - corrigé pour 2025
+        if today.year == 2025 and week_num >= 36:
+            # Semaines de septembre à décembre 2025
+            weeks_since_start = week_num - 36
+            is_type_A = (weeks_since_start % 2) == 0
+            week_type = "A" if is_type_A else "B"
+            week_name = f"Semaine {week_num} {week_type}"
+        elif today.year == 2026 and week_num <= 35:
+            # Semaines de janvier à juin 2026
+            # 17 semaines de sept-dec 2025 (36-52)
+            weeks_since_start = 17 + week_num - 1
+            is_type_A = (weeks_since_start % 2) == 0
+            week_type = "A" if is_type_A else "B"
+            # Format avec zéro pour les semaines < 10
+            week_name = f"Semaine {week_num:02d} {week_type}"
+        else:
+            # Par défaut, prendre la première semaine
+            week_name = weeks_to_display[0]['name']
+    
+    # Trouver la semaine correspondante dans la liste
+    current_week_info = None
+    for week_info in weeks_to_display:
+        if week_info['name'] == week_name:
+            current_week_info = week_info
+            break
+    
+    if not current_week_info:
+        # Fallback si la semaine n'est pas trouvée
+        current_week_info = weeks_to_display[0]
+        week_name = current_week_info['name']
+    
+    # Générer la grille horaire
+    time_slots = generate_time_grid()
+    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+    
+    # Préparer les données des cours
+    all_courses_obj = schedule_manager.get_all_courses()
+    prof_working_days = schedule_manager.get_prof_working_days()
+    
+    # Filtrer pour la semaine et ajouter les jours de travail
+    all_courses_for_week = []
+    for c in all_courses_obj:
+        if c.week_name == week_name:
+            course_dict = asdict(c)
+            course_dict['working_days'] = prof_working_days.get(c.professor, [])
+            all_courses_for_week.append(course_dict)
+    
+    # Attacher les TPs aux cours originaux AVANT de les placer dans la grille
+    original_courses = [c for c in all_courses_for_week if not c['course_id'].startswith('custom_')]
+    custom_tps = [c for c in all_courses_for_week if c['course_id'].startswith('custom_')]
+    
+    # Créer un lookup pour les cours originaux
+    original_courses_lookup = {}
+    for course in original_courses:
+        key = (course.get('day'), course.get('professor'), course.get('raw_time_slot'))
+        if key not in original_courses_lookup:
+            original_courses_lookup[key] = []
+        original_courses_lookup[key].append(course)
+    
+    # Initialiser related_tps pour tous les cours
+    for course in all_courses_for_week:
+        course['related_tps'] = []
+    
+    # Attacher les TPs aux cours originaux correspondants
+    standalone_tps = []
+    for tp in custom_tps:
+        key = (tp.get('day'), tp.get('professor'), tp.get('raw_time_slot'))
+        matching_originals = original_courses_lookup.get(key, [])
+        
+        if matching_originals:
+            # Attacher ce TP au premier cours original correspondant
+            matching_originals[0]['related_tps'].append(tp)
+        else:
+            # TP autonome (pas de cours original correspondant)
+            standalone_tps.append(tp)
+    
+    # Ajouter les TPs autonomes à la liste des cours à afficher
+    courses_to_place_in_grid = original_courses + standalone_tps
+    
+    # Créer une grille complète : jour -> créneau -> liste des cours
+    weekly_grid = {}
+    for day in days_order:
+        weekly_grid[day] = {}
+        for time_slot in time_slots:
+            weekly_grid[day][time_slot['label']] = {
+                'time_info': time_slot,
+                'courses': []
+            }
+    
+    # Placer les cours dans la grille
+    for course in courses_to_place_in_grid:
+        day = course.get('day')
+        if day not in days_order:
+            continue
+            
+        course_start = course.get('start_time', '')
+        course_end = course.get('end_time', '')
+        
+        # Convertir les heures en minutes pour faciliter les calculs
+        course_start_min = TimeSlotService.time_to_minutes(course_start)
+        course_end_min = TimeSlotService.time_to_minutes(course_end)
+        
+        # Trouver le premier créneau qui correspond au début du cours
+        primary_slot = None
+        for time_slot in time_slots:
+            slot_start_min = TimeSlotService.time_to_minutes(time_slot['start_time'])
+            slot_end_min = TimeSlotService.time_to_minutes(time_slot['end_time'])
+            
+            # Si le cours commence dans ce créneau, c'est le créneau principal
+            if course_start_min >= slot_start_min and course_start_min < slot_end_min:
+                primary_slot = time_slot['label']
+                # Marquer ce cours comme cours principal dans ce créneau
+                course['is_primary_slot'] = True
+                course['spans_slots'] = []
+                
+                # Calculer tous les créneaux que ce cours occupe
+                for other_slot in time_slots:
+                    other_start_min = TimeSlotService.time_to_minutes(other_slot['start_time'])
+                    other_end_min = TimeSlotService.time_to_minutes(other_slot['end_time'])
+                    
+                    # Si ce créneau chevauche avec le cours
+                    if not (course_end_min <= other_start_min or course_start_min >= other_end_min):
+                        course['spans_slots'].append(other_slot['label'])
+                        
+                        # Ajouter le cours à ce créneau
+                        if other_slot['label'] == primary_slot:
+                            # Dans le créneau principal, afficher toutes les infos
+                            weekly_grid[day][other_slot['label']]['courses'].append(course)
+                        else:
+                            # Dans les autres créneaux, afficher une version réduite
+                            continuation_course = course.copy()
+                            continuation_course['is_continuation'] = True
+                            continuation_course['primary_slot'] = primary_slot
+                            weekly_grid[day][other_slot['label']]['courses'].append(continuation_course)
+                break
+    
+    return render_template('planning_v2.html',
+                         weekly_grid=weekly_grid,
+                         time_slots=time_slots,
+                         days_order=days_order,
+                         rooms=schedule_manager.rooms,
+                         get_room_name=schedule_manager.get_room_name,
+                         all_weeks=weeks_to_display,
+                         current_week=week_name,
+                         current_week_info=current_week_info,
+                         all_professors=schedule_manager.get_normalized_professors_list())
+@app.route('/professors')
+def list_professors_overview_minimal():
+    """Page de vue d'ensemble des emplois du temps des professeurs."""
+    # Forcer le rechargement des données en production
+    schedule_manager.reload_data()
+    summary = schedule_manager.get_canonical_schedules_summary()
+
+    # Utiliser le service pour obtenir les mappings
+    prof_name_mapping = ProfessorService.get_professor_name_mapping(schedule_manager.canonical_schedules)
+    prof_id_mapping = ProfessorService.load_professor_id_mapping()
+
+    return render_template('prof_schedules_overview.html',
+                         summary=summary,
+                         prof_colors=PROF_COLORS,
+                         prof_name_mapping=prof_name_mapping,
+                         prof_id_mapping=prof_id_mapping)
+
+@app.route('/professors/links')
+def professors_links():
+    """Page affichant les liens directs vers les emplois du temps des professeurs."""
+    schedule_manager.reload_data()
+
+    # Utiliser le service pour extraire les professeurs
+    all_courses = schedule_manager.get_all_courses()
+    professors = ProfessorService.extract_professors_from_courses(all_courses)
+
+    return render_template('prof_list.html',
+                         professors=professors,
+                         prof_id_mapping=ProfessorService.get_all_professors_with_ids())
+
+@app.route('/edit_schedule/<path:prof_name>')
+def edit_schedule(prof_name: str):
+    """Page d'édition de l'emploi du temps pour un professeur."""
+
+    # Forcer le rechargement des données en production
+    schedule_manager.reload_data()
+
+    # Utiliser le service pour trouver le nom exact du professeur
+    available_profs = list(schedule_manager.canonical_schedules.keys())
+    exact_prof_name = ProfessorService.find_exact_professor_name(prof_name, available_profs)
+
+    if not exact_prof_name:
+        return f"Professeur '{prof_name}' non trouvé. Professeurs disponibles: {', '.join(available_profs[:5])}...", 404
+
+    courses = schedule_manager.get_prof_schedule(exact_prof_name)
+    sorted_courses = ProfessorService.sort_courses_by_day_and_time(courses)
+
+    return render_template('edit_schedule.html',
+                           prof_name=exact_prof_name,
+                           courses=sorted_courses)
+
+@app.route('/api/save_prof_schedule/<path:prof_name>', methods=['POST'])
+def save_prof_schedule(prof_name: str):
+    """API pour sauvegarder le nouvel emploi du temps d'un professeur."""
+    try:
+        new_courses = request.get_json()
+        if not isinstance(new_courses, list):
+            return jsonify({'success': False, 'error': 'Format de données invalide.'})
+
+        # Recalculer les durées avant de sauvegarder
+        parser = ExcelScheduleParser()
+        for course in new_courses:
+            time_info = parser.parse_time_range(course.get('raw_time_slot', ''))
+            if time_info:
+                course['start_time'], course['end_time'], course['duration_hours'] = time_info
+            else: # Mettre des valeurs par défaut si le parsing échoue
+                course['start_time'], course['end_time'], course['duration_hours'] = "00:00", "00:00", 0
+        
+        success = schedule_manager.update_prof_schedule(prof_name, new_courses)
+
+        if success:
+            # Forcer la synchronisation des données pour tous les workers
+            schedule_manager.force_sync_data()
+            return jsonify({'success': True, 'message': 'Emploi du temps mis à jour.'})
+        else:
+            return jsonify({'success': False, 'error': 'Impossible de sauvegarder.'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/assign_room', methods=['POST'])
+def assign_room():
+    """API pour attribuer une salle à un cours"""
+    try:
+        data = request.get_json()
+        course_id = data.get('course_id')
+        room_id = data.get('room_id')
+        
+        if not course_id:
+            return jsonify({'success': False, 'error': 'Course ID manquant'})
+        
+        # Si room_id est vide, on supprime l'attribution
+        if not room_id:
+            if course_id in schedule_manager.room_assignments:
+                del schedule_manager.room_assignments[course_id]
+                schedule_manager.save_assignments()
+                # Forcer la synchronisation des données pour tous les workers
+                schedule_manager.force_sync_data()
+            return jsonify({'success': True})
+        
+        # Vérifier les conflits avec détails
+        conflict_details = schedule_manager.check_room_conflict_detailed(course_id, room_id)
+        
+        if conflict_details['has_conflict']:
+            return jsonify({
+                'success': False, 
+                'error': 'Conflit de salle détecté',
+                'conflict_details': conflict_details
+            })
+        
+        # Attribuer la salle
+        success = schedule_manager.assign_room(course_id, room_id)
+        
+        if success:
+            # Forcer la synchronisation des données pour tous les workers
+            schedule_manager.force_sync_data()
+            # Invalider le cache des salles occupées
+            _invalidate_occupied_rooms_cache()
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Erreur lors de l\'attribution'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/get_conflict_details', methods=['POST'])
+def get_conflict_details():
+    """API pour obtenir les détails des conflits de salle"""
+    try:
+        data = request.get_json()
+        course_id = data.get('course_id')
+        room_id = data.get('room_id')
+        
+        if not course_id or not room_id:
+            return jsonify({'has_conflict': False, 'conflicts': []})
+        
+        conflict_info = schedule_manager.check_room_conflict_detailed(course_id, room_id)
+        return jsonify(conflict_info)
+    
+    except Exception as e:
+        return jsonify({'has_conflict': True, 'conflicts': [{'type': 'error', 'message': str(e)}]})
+
+
+@app.route('/api/check_conflict', methods=['POST'])
+def check_conflict():
+    """API pour vérifier les conflits de salle"""
+    try:
+        data = request.get_json()
+        course_id = data.get('course_id')
+        room_id = data.get('room_id')
+        
+        if not course_id or not room_id:
+            return jsonify({'conflict': False})
+        
+        conflict = schedule_manager.check_room_conflict(course_id, room_id)
+        return jsonify({'conflict': conflict})
+    
+    except Exception as e:
+        return jsonify({'conflict': True, 'error': str(e)})
+
+@app.route('/api/courses/add_custom', methods=['POST'])
+def add_custom_course():
+    """API pour ajouter un TP personnalisé."""
+    data = request.get_json()
+    
+    # Validation basique
+    required_fields = ['week_name', 'day', 'raw_time_slot', 'professor', 'course_type']
+    if not all(field in data for field in required_fields):
+        return jsonify({'success': False, 'error': 'Données manquantes.'}), 400
+        
+    course_id = schedule_manager.add_custom_course(data)
+    
+    # Forcer le rechargement des données pour tous les workers
+    schedule_manager.reload_data()
+    
+    # Retourner les détails du cours ajouté pour l'afficher dynamiquement
+    new_course = next((c for c in schedule_manager.custom_courses if c['course_id'] == course_id), None)
+    
+    if new_course:
+        return jsonify({'success': True, 'course': new_course})
+    else:
+        return jsonify({'success': False, 'error': "Erreur lors de la création du cours."}), 500
+
+@app.route('/api/courses/move', methods=['POST'])
+def move_custom_course():
+    """API pour déplacer un TP personnalisé."""
+    data = request.get_json()
+    course_id = data.get('course_id')
+    new_day = data.get('day')
+    new_week = data.get('week_name')
+
+    if not all([course_id, new_day, new_week]):
+        return jsonify({'success': False, 'error': 'Données manquantes pour le report.'}), 400
+
+    success = schedule_manager.move_custom_course(course_id, new_day, new_week)
+
+    if success:
+        # Forcer le rechargement des données pour tous les workers
+        schedule_manager.reload_data()
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Le cours à reporter n\'a pas été trouvé.'}), 404
+
+@app.route('/api/professors/add', methods=['POST'])
+def add_professor():
+    """API pour ajouter un nouveau professeur."""
+    data = request.get_json()
+    prof_name = data.get('name', '').strip()
+    if not prof_name:
+        return jsonify({'success': False, 'error': 'Le nom du professeur est requis.'}), 400
+    
+    success = schedule_manager.add_professor(prof_name)
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Ce professeur existe déjà.'}), 409
+
+@app.route('/api/professors/update_color', methods=['POST'])
+def update_prof_color():
+    """API pour mettre à jour la couleur d'un professeur."""
+    data = request.get_json()
+    prof_name = data.get('name')
+    color = data.get('color')
+    if not prof_name or not color:
+        return jsonify({'success': False, 'error': 'Données manquantes.'}), 400
+    
+    success = schedule_manager.update_prof_color(prof_name, color)
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Couleur invalide.'}), 400
+
+@app.route('/api/professors/delete', methods=['POST'])
+def delete_professor():
+    """API pour supprimer un professeur."""
+    data = request.get_json()
+    prof_name = data.get('name')
+    if not prof_name:
+        return jsonify({'success': False, 'error': 'Le nom du professeur est requis.'}), 400
+        
+    success = schedule_manager.delete_professor(prof_name)
+    if success:
+        # Forcer la synchronisation des données pour tous les workers
+        schedule_manager.force_sync_data()
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Professeur non trouvé.'}), 404
+
+@app.route('/api/get_occupied_rooms', methods=['POST'])
+def get_occupied_rooms():
+    """API optimisée pour récupérer les salles occupées pour un créneau donné"""
+    try:
+        data = request.get_json()
+        course_id = data.get('course_id')
+        
+        if not course_id:
+            return jsonify({'occupied_rooms': []})
+        
+        # Forcer la synchronisation des données en production
+        schedule_manager.force_sync_data()
+        
+        # Trouver le cours actuel pour obtenir ses informations de créneau
+        all_courses = schedule_manager.get_all_courses()
+        current_course = None
+        
+        for course in all_courses:
+            if course.course_id == course_id:
+                current_course = course
+                break
+        
+        if not current_course:
+            return jsonify({'occupied_rooms': []})
+        
+        # Générer la clé de cache basée sur le créneau
+        cache_key = _get_cache_key(
+            course_id, 
+            current_course.week_name, 
+            current_course.day,
+            current_course.start_time, 
+            current_course.end_time
+        )
+        
+        # Vérifier le cache
+        now = time.time()
+        with _cache_lock:
+            if cache_key in _occupied_rooms_cache:
+                cached_data = _occupied_rooms_cache[cache_key]
+                if now - cached_data['timestamp'] < _cache_ttl:
+                    return jsonify({'occupied_rooms': cached_data['rooms'], 'from_cache': True})
+        
+        # Calculer les salles occupées (cache miss ou expiré)
+        occupied_rooms = set()
+        
+        for course in all_courses:
+            if (course.course_id != course_id and 
+                course.assigned_room and
+                course.week_name == current_course.week_name and
+                course.day == current_course.day):
+                
+                # Vérifier le chevauchement horaire
+                if schedule_manager.times_overlap(
+                    current_course.start_time, current_course.end_time,
+                    course.start_time, course.end_time
+                ):
+                    occupied_rooms.add(course.assigned_room)
+        
+        occupied_rooms_list = list(occupied_rooms)
+        
+        # Mettre en cache
+        with _cache_lock:
+            _occupied_rooms_cache[cache_key] = {
+                'rooms': occupied_rooms_list,
+                'timestamp': now
+            }
+        
+        return jsonify({'occupied_rooms': occupied_rooms_list, 'from_cache': False})
+    
+    except Exception as e:
+        return jsonify({'occupied_rooms': [], 'error': str(e)})
+
+@app.route('/api/get_free_rooms', methods=['POST'])
+def get_free_rooms():
+    """API pour récupérer les salles libres pour un créneau donné"""
+    try:
+        data = request.get_json()
+        week_name = data.get('week_name')
+        day_name = data.get('day_name')
+        time_slot = data.get('time_slot')
+        
+        if not all([week_name, day_name, time_slot]):
+            return jsonify({'free_rooms': [], 'error': 'Paramètres manquants'})
+        
+        # Forcer la synchronisation des données
+        schedule_manager.force_sync_data()
+        
+        # Récupérer toutes les salles
+        all_rooms = schedule_manager.rooms
+        
+        # Récupérer tous les cours
+        all_courses = schedule_manager.get_all_courses()
+        
+        # Trouver les cours qui se chevauchent avec ce créneau
+        occupied_rooms = set()
+        
+        # Parser le créneau horaire (ex: "8h-9h")
+        time_parts = time_slot.split('-')
+        if len(time_parts) == 2:
+            start_time_str = time_parts[0].strip()
+            end_time_str = time_parts[1].strip()
+            
+            # Convertir le format "8h" en "08:00"
+            def convert_time_format(time_str):
+                # Enlever le "h" et convertir en format HH:MM
+                hour = time_str.replace('h', '').strip()
+                return f"{int(hour):02d}:00"
+            
+            try:
+                start_time = convert_time_format(start_time_str)
+                end_time = convert_time_format(end_time_str)
+                
+                # Vérifier tous les cours pour ce jour et cette semaine
+                for course in all_courses:
+                    if (course.week_name == week_name and 
+                        course.day == day_name and
+                        course.assigned_room):
+                        
+                        # Vérifier le chevauchement horaire
+                        if schedule_manager.times_overlap(
+                            start_time, end_time,
+                            course.start_time, course.end_time
+                        ):
+                            occupied_rooms.add(course.assigned_room)
+                            
+            except Exception as e:
+                print(f"Erreur parsing time: {e}")
+                return jsonify({'free_rooms': [], 'error': 'Erreur parsing horaire'})
+        
+        # Calculer les salles libres
+        free_rooms = []
+        for room in all_rooms:
+            if room['id'] not in occupied_rooms:
+                free_rooms.append({
+                    'id': room['id'],
+                    'nom': room['nom'],
+                    'capacite': room.get('capacite', 'N/A')
+                })
+        
+        return jsonify({
+            'free_rooms': free_rooms,
+            'total_rooms': len(all_rooms),
+            'occupied_count': len(occupied_rooms),
+            'free_count': len(free_rooms)
+        })
+        
+    except Exception as e:
+        return jsonify({'free_rooms': [], 'error': str(e)})
+
+@app.route('/api/courses/duplicate', methods=['POST'])
+def duplicate_course():
+    """API pour dupliquer un cours vers plusieurs jours/semaines."""
+    try:
+        data = request.get_json()
+        professor = data.get('professor')
+        course_type = data.get('course_type')
+        raw_time_slot = data.get('raw_time_slot')
+        days = data.get('days', [])
+        weeks = data.get('weeks', [])
+        
+        if not all([professor, course_type, raw_time_slot, days, weeks]):
+            return jsonify({'success': False, 'error': 'Données manquantes.'}), 400
+        
+        created_count = 0
+        
+        # Dupliquer vers chaque combinaison jour/semaine
+        for day in days:
+            for week in weeks:
+                course_data = {
+                    'week_name': week,
+                    'day': day,
+                    'raw_time_slot': raw_time_slot,
+                    'professor': professor,
+                    'course_type': course_type,
+                    'nb_students': 'N/A'
+                }
+                
+                course_id = schedule_manager.add_custom_course(course_data)
+                if course_id:
+                    created_count += 1
+        
+        return jsonify({'success': True, 'created_count': created_count})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/courses/delete', methods=['POST'])
+def delete_course():
+    """API pour supprimer un cours personnalisé."""
+    try:
+        data = request.get_json()
+        course_id = data.get('course_id')
+        
+        if not course_id:
+            return jsonify({'success': False, 'error': 'ID du cours manquant.'}), 400
+        
+        # Chercher et supprimer le cours dans la liste des cours personnalisés
+        course_found = False
+        for i, course in enumerate(schedule_manager.custom_courses):
+            if course.get('course_id') == course_id:
+                schedule_manager.custom_courses.pop(i)
+                course_found = True
+                break
+        
+        if course_found:
+            # Supprimer aussi l'attribution de salle si elle existe
+            if course_id in schedule_manager.room_assignments:
+                del schedule_manager.room_assignments[course_id]
+                schedule_manager.save_assignments()
+            
+            # Sauvegarder les cours personnalisés
+            schedule_manager.save_custom_courses()
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Cours non trouvé.'}), 404
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/courses/update_tp_name', methods=['POST'])
+def update_tp_name():
+    """API pour mettre à jour le nom d'un TP sur un cours existant."""
+    try:
+        data = request.get_json()
+        course_id = data.get('course_id')
+        tp_name = data.get('tp_name')
+        
+        if not course_id or not tp_name:
+            return jsonify({'success': False, 'error': 'ID du cours et nom du TP requis.'}), 400
+        
+        # Sauvegarder le nom du TP dans un fichier dédié
+        success = schedule_manager.save_tp_name(course_id, tp_name)
+        
+        if success:
+            return jsonify({'success': True, 'tp_name': tp_name})
+        else:
+            return jsonify({'success': False, 'error': 'Erreur lors de la sauvegarde.'}), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/courses/get_tp_names', methods=['GET'])
+def get_tp_names():
+    """API pour récupérer tous les noms de TP sauvegardés."""
+    try:
+        # Forcer la synchronisation des données avant de récupérer
+        schedule_manager.force_sync_data()
+        tp_names = schedule_manager.get_all_tp_names()
+        
+        response = jsonify({'success': True, 'tp_names': tp_names})
+        # Ajouter des en-têtes anti-cache
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+    except Exception as e:
+        print(f"Erreur lors de la récupération des noms de TP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/courses/delete_tp_name', methods=['POST'])
+def delete_tp_name():
+    """API pour supprimer le nom d'un TP d'un cours."""
+    try:
+        data = request.get_json()
+        course_id = data.get('course_id')
+        
+        if not course_id:
+            return jsonify({'success': False, 'error': 'ID du cours requis.'}), 400
+        
+        print(f"Suppression du TP pour le cours {course_id}")
+        
+        # Supprimer le nom du TP
+        success = schedule_manager.delete_tp_name(course_id)
+        
+        if success:
+            print(f"TP supprimé avec succès pour le cours {course_id}")
+            # Forcer la synchronisation des données
+            schedule_manager.force_sync_data()
+            
+            response = jsonify({'success': True, 'message': 'TP supprimé avec succès'})
+            # Ajouter des en-têtes anti-cache
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
+        else:
+            print(f"Erreur lors de la suppression du TP pour le cours {course_id}")
+            return jsonify({'success': False, 'error': 'Erreur lors de la suppression.'}), 500
+            
+    except Exception as e:
+        print(f"Exception lors de la suppression du TP: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/student')
+@app.route('/student/<week_name>')
+def student_view(week_name=None):
+    """Interface étudiants - affiche les cours du jour de la semaine en cours."""
+    
+    # Permettre de simuler une date pour les tests via un paramètre d'URL
+    # ex: /student?test_date=2025-06-25
+    test_date_str = request.args.get('test_date')
+    try:
+        now = datetime.strptime(test_date_str, '%Y-%m-%d')
+    except (ValueError, TypeError):
+        now = datetime.now(pytz.timezone("Europe/Paris"))
+    
+    # Nouveau paramètre pour afficher/masquer le sélecteur de période
+    # ex: /student?show_selector=true
+    show_selector = request.args.get("show_selector", "false").lower() == "true"
+
+    # Nouveau paramètre pour le mode kiosque
+    # ex: /student?kiosque=true
+    kiosque_mode = request.args.get("kiosque", "false").lower() == "true"
+    
+    # Nouveau paramètre pour forcer une période spécifique
+    # ex: /student?period=morning ou /student?period=afternoon
+    forced_period = request.args.get('period')
+    
+    # Nouveau paramètre pour forcer un jour spécifique
+    # ex: /student?day=Lundi ou /student?day=Mardi
+    forced_day = request.args.get('day')
+
+    def generate_academic_calendar():
+        """Génère une liste de semaines alternant A et B pour toute l'année scolaire, incluant la semaine 36."""
+        weeks = []
+        is_type_A = True
+        # Inclure explicitement la semaine 36 avant la séquence habituelle
+        weeks.append(f"Semaine 36 {'A' if is_type_A else 'B'}")
+        is_type_A = not is_type_A
+        # Semaines 37 à 52
+        for week_num in range(37, 53):
+            week_type = "A" if is_type_A else "B"
+            weeks.append(f"Semaine {week_num} {week_type}")
+            is_type_A = not is_type_A
+        # Semaines 01 à 35
+        for week_num in range(1, 36):
+            week_type = "A" if is_type_A else "B"
+            weeks.append(f"Semaine {week_num:02d} {week_type}")
+            is_type_A = not is_type_A
+        return weeks
+
+    def get_current_academic_week_name(calendar):
+        """Détermine le nom de la semaine académique actuelle à partir du calendrier."""
+        current_week_number = now.isocalendar()[1]
+        
+        # Formats de recherche possibles pour le numéro de semaine
+        search_pattern_1 = f"Semaine {current_week_number} "
+        search_pattern_2 = f"Semaine {current_week_number:02d} "
+        
+        for week in calendar:
+            if week.startswith(search_pattern_1) or week.startswith(search_pattern_2):
+                return week
+        
+        # Si la semaine n'est pas dans le calendrier scolaire (ex: vacances), on prend la première.
+        return calendar[0] if calendar else None
+
+    weeks_to_display = generate_academic_calendar()
+    
+    # Si aucune semaine n'est fournie dans l'URL, on détermine la semaine actuelle.
+    if week_name is None:
+        week_name = get_current_academic_week_name(weeks_to_display)
+
+    def get_current_period():
+        """Détermine si on affiche la matinée ou l'après-midi selon l'heure actuelle"""
+        current_hour = now.hour
+        
+        # Matinée : 8h-12h30 (avant 12h30)
+        # Après-midi : 13h30-18h (après 12h30)
+        if current_hour < 12 or (current_hour == 12 and now.minute < 30):
+            return "morning"
+        else:
+            return "afternoon"
+
+    def generate_time_slots_for_period(period):
+        """Génère les créneaux horaires selon la période"""
+        if period == "morning":
+            # Créneaux du matin : 8h-12h15
+            return [
+                {'start_time': '08:00', 'end_time': '09:00', 'label': '8h-9h'},
+                {'start_time': '09:00', 'end_time': '10:00', 'label': '9h-10h'},
+                {'start_time': '10:15', 'end_time': '11:15', 'label': '10h15-11h15'},
+                {'start_time': '11:15', 'end_time': '12:15', 'label': '11h15-12h15'},
+            ]
+        else:
+            # Créneaux de l'après-midi : 13h30-18h
+            return [
+                {'start_time': '13:30', 'end_time': '14:30', 'label': '13h30-14h30'},
+                {'start_time': '14:30', 'end_time': '15:30', 'label': '14h30-15h30'},
+                {'start_time': '15:45', 'end_time': '16:45', 'label': '15h45-16h45'},
+                {'start_time': '16:45', 'end_time': '17:45', 'label': '16h45-17h45'},
+                {'start_time': '17:45', 'end_time': '18:00', 'label': '17h45-18h'},
+            ]
+
+    # Afficher la journée complète pour placement, puis filtrer à l'affichage
+    time_slots = TimeSlotService.generate_time_grid()
+    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+    
+    # Déterminer le jour à afficher (automatique ou forcé)
+    valid_days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+    
+    if forced_day and forced_day in valid_days:
+        current_day_fr = forced_day
+    else:
+        # Détermination automatique du jour actuel
+        current_day = now.strftime('%A')
+        day_translation = {
+            'Monday': 'Lundi',
+            'Tuesday': 'Mardi', 
+            'Wednesday': 'Mercredi',
+            'Thursday': 'Jeudi',
+            'Friday': 'Vendredi'
+        }
+        current_day_fr = day_translation.get(current_day, 'Lundi')
+    
+    # Récupérer tous les cours pour la semaine
+    all_courses_obj = schedule_manager.get_all_courses()
+    
+    # Récupérer seulement les cours du jour actuel
+    courses_for_display = []
+    for course in all_courses_obj:
+        if course.week_name == week_name and course.assigned_room and course.day == current_day_fr:
+            courses_for_display.append(course)
+    
+    # Trier les cours par ordre alphabétique des professeurs (sans M/Mme)
+    def sort_key(course):
+        # Enlever "M " ou "Mme " du début pour le tri
+        prof_name = course.professor
+        if prof_name.startswith('M '):
+            prof_name = prof_name[2:]  # Enlever "M "
+        elif prof_name.startswith('Mme '):
+            prof_name = prof_name[4:]  # Enlever "Mme "
+        return prof_name.lower()
+    
+    courses_for_display.sort(key=sort_key)
+    
+    # Pas de limitation pour avoir tous les cours
+    # courses_for_display = courses_for_display[:20]
+    
+    # Créer la grille simplifiée pour le jour actuel seulement
+    student_grid = {}
+    student_grid[current_day_fr] = {}
+    for time_slot in time_slots:
+        student_grid[current_day_fr][time_slot['label']] = {
+            'time_info': time_slot,
+            'courses': []
+        }
+
+    # Placer les cours du jour actuel dans la grille
+    for course in courses_for_display:
+        course_start = course.start_time
+        course_placed = False
+        
+        # Trouver le créneau correspondant le plus proche
+        for time_slot in time_slots:
+            slot_start = time_slot['start_time']
+            slot_end = time_slot['end_time']
+            
+            # Vérifier si le cours commence dans ce créneau ou dans les 30 minutes précédentes
+            if course_start >= slot_start and course_start < slot_end:
+                course_dict = asdict(course)
+                course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
+                course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
+                
+                student_grid[current_day_fr][time_slot['label']]['courses'].append(course_dict)
+                course_placed = True
+                break
+        
+        # Si le cours n'a pas été placé, essayer avec une logique plus souple
+        if not course_placed:
+            # Convertir l'heure de début en minutes pour une comparaison plus précise
+            course_minutes = TimeSlotService.time_to_minutes(course_start)
+            best_slot = None
+            min_diff = float('inf')
+            
+            # Trouver le créneau le plus proche
+            for time_slot in time_slots:
+                slot_minutes = TimeSlotService.time_to_minutes(time_slot['start_time'])
+                diff = abs(course_minutes - slot_minutes)
+                
+                if diff < min_diff:
+                    min_diff = diff
+                    best_slot = time_slot
+            
+            # Placer dans le créneau le plus proche si la différence est raisonnable (< 60 minutes)
+            if best_slot and min_diff < 60:
+                course_dict = asdict(course)
+                course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
+                course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
+                
+                student_grid[current_day_fr][best_slot['label']]['courses'].append(course_dict)
+
+    # Sélection de période (matin < 12h05, après-midi ≥ 12h05)
+    def get_current_period_strict():
+        if now.hour < 12 or (now.hour == 12 and now.minute < 5):
+            return "morning"
+        return "afternoon"
+
+    # Déterminer la période à afficher (automatique, forcée, ou toute la journée)
+    if forced_period and forced_period in ['morning', 'afternoon']:
+        period = forced_period
+    elif show_selector and not forced_period:
+        # Si le sélecteur est activé mais pas de période forcée, afficher toute la journée
+        period = 'full_day'
+    else:
+        # Mode automatique basé sur l'heure actuelle
+        period = get_current_period_strict()
+
+    # Filtrer les créneaux selon la période
+    def is_morning_slot(slot):
+        return slot['start_time'] < '12:00'
+
+    def is_afternoon_slot(slot):
+        return slot['start_time'] >= '12:00'
+
+    # Filtrer les créneaux selon la période
+    if period == 'morning':
+        period_slots = [s for s in time_slots if is_morning_slot(s)]
+    elif period == 'afternoon':
+        period_slots = [s for s in time_slots if is_afternoon_slot(s)]
+    else:  # 'full_day'
+        period_slots = time_slots
+
+    # Masquer les créneaux sans cours
+    filtered_time_slots = []
+    for s in period_slots:
+        label = s['label']
+        slot_courses = student_grid[current_day_fr][label]['courses']
+        if slot_courses:
+            filtered_time_slots.append(s)
+
+    template_name = 'student_view_kiosque.html' if kiosque_mode else 'student_view.html'
+    return render_template(template_name,
+                         student_grid=student_grid,
+                         time_slots=filtered_time_slots,
+                         days_order=[current_day_fr],
+                         current_week=week_name,
+                         all_weeks=weeks_to_display,
+                         current_period=period,
+                         current_day=current_day_fr,
+                         period_label="Matinée" if period == "morning" else ("Après-midi" if period == "afternoon" else "Journée complète"),
+                         total_courses=len(courses_for_display),
+                         show_selector=show_selector,
+                         forced_period=forced_period,
+                         forced_day=forced_day,
+                         valid_days=valid_days)
+
+
+# ============== NOUVELLES ROUTES KIOSQUE ==============
+
+@app.route('/kiosque/week')
+@app.route('/kiosque/week/<week_name>')
+def kiosque_week(week_name=None):
+    """Vue kiosque - tous les cours de la semaine sur un écran"""
+    
+    # Logique semaine actuelle si non spécifiée
+    if week_name is None:
+        today = datetime.now().date()
+        week_num = today.isocalendar()[1]
+        if today.year == 2025 and week_num >= 36:
+            weeks_since_start = week_num - 36
+            is_type_A = (weeks_since_start % 2) == 0
+            week_type = "A" if is_type_A else "B"
+            week_name = f"Semaine {week_num} {week_type}"
+    
+    # Récupérer tous les cours de la semaine
+    all_courses = schedule_manager.get_all_courses()
+    week_courses = [c for c in all_courses if c.week_name == week_name and c.assigned_room]
+    
+    # Organiser par jour
+    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+    week_grid = {}
+    time_slots = TimeSlotService.generate_time_grid()
+    
+    for day in days_order:
+        week_grid[day] = {}
+        for slot in time_slots:
+            week_grid[day][slot['label']] = {
+                'time_info': slot,
+                'courses': []
+            }
+    
+    # Placer les cours dans la grille
+    for course in week_courses:
+        day = course.day
+        if day in week_grid:
+            # Trouver le créneau correspondant
+            for slot in time_slots:
+                if course.start_time >= slot['start_time'] and course.start_time < slot['end_time']:
+                    course_dict = asdict(course)
+                    course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
+                    course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
+                    week_grid[day][slot['label']]['courses'].append(course_dict)
+                    break
+    
+    return render_template('kiosque_week.html',
+                         week_grid=week_grid,
+                         time_slots=time_slots,
+                         days_order=days_order,
+                         current_week=week_name,
+                         total_courses=len(week_courses))
+
+@app.route('/kiosque/room')
+@app.route('/kiosque/room/<room_id>')
+def kiosque_room(room_id=None):
+    """Vue kiosque - occupation des salles"""
+    
+    # Semaine actuelle
+    today = datetime.now().date()
+    week_num = today.isocalendar()[1]
+    if today.year == 2025 and week_num >= 36:
+        weeks_since_start = week_num - 36
+        is_type_A = (weeks_since_start % 2) == 0
+        week_type = "A" if is_type_A else "B"
+        current_week = f"Semaine {week_num} {week_type}"
+    
+    all_courses = schedule_manager.get_all_courses()
+    week_courses = [c for c in all_courses if c.week_name == current_week and c.assigned_room]
+    
+    # Si room_id spécifié, filtrer
+    if room_id:
+        week_courses = [c for c in week_courses if c.assigned_room == room_id]
+    
+    # Grouper par salle
+    rooms_data = {}
+    for course in week_courses:
+        room_name = schedule_manager.get_room_name(course.assigned_room)
+        if room_name not in rooms_data:
+            rooms_data[room_name] = {
+                'room_id': course.assigned_room,
+                'courses': [],
+                'occupancy_rate': 0
+            }
+        rooms_data[room_name]['courses'].append(asdict(course))
+    
+    # Calculer taux d'occupation (35 créneaux par semaine max)
+    for room_data in rooms_data.values():
+        room_data['occupancy_rate'] = min(100, len(room_data['courses']) * 100 // 35)
+    
+    return render_template('kiosque_room.html',
+                         rooms_data=rooms_data,
+                         current_week=current_week,
+                         focused_room=room_id)
+
+@app.route('/tv/schedule')
+def tv_schedule():
+    """Affichage TV défilant automatique"""
+    
+    # Cours actuels et suivants
+    now = datetime.now(pytz.timezone("Europe/Paris"))
+    current_time = now.strftime('%H:%M')
+    current_day = now.strftime('%A')
+    day_translation = {
+        'Monday': 'Lundi', 'Tuesday': 'Mardi', 'Wednesday': 'Mercredi',
+        'Thursday': 'Jeudi', 'Friday': 'Vendredi'
+    }
+    current_day_fr = day_translation.get(current_day, 'Lundi')
+    
+    # Semaine actuelle
+    week_num = now.isocalendar()[1]
+    if now.year == 2025 and week_num >= 36:
+        weeks_since_start = week_num - 36
+        is_type_A = (weeks_since_start % 2) == 0
+        week_type = "A" if is_type_A else "B"
+        current_week = f"Semaine {week_num} {week_type}"
+    
+    all_courses = schedule_manager.get_all_courses()
+    today_courses = [c for c in all_courses 
+                    if c.week_name == current_week 
+                    and c.day == current_day_fr 
+                    and c.assigned_room]
+    
+    # Séparer cours en cours et à venir
+    current_courses = []
+    upcoming_courses = []
+    
+    for course in today_courses:
+        if course.start_time <= current_time <= course.end_time:
+            current_courses.append(course)
+        elif course.start_time > current_time:
+            upcoming_courses.append(course)
+    
+    upcoming_courses.sort(key=lambda c: c.start_time)
+    
+    return render_template('tv_schedule.html',
+                         current_courses=current_courses,
+                         upcoming_courses=upcoming_courses[:8],
+                         current_week=current_week,
+                         current_day=current_day_fr,
+                         current_time=current_time)
+
+@app.route('/kiosque/halfday')
+@app.route('/kiosque/halfday/<layout>')
+def kiosque_halfday(layout="standard"):
+    """Vue kiosque - demi-journée avec détection automatique matin/après-midi"""
+    
+    now = datetime.now(pytz.timezone("Europe/Paris"))
+    current_hour = now.hour
+    import locale; locale.setlocale(locale.LC_TIME, "C"); current_day = now.strftime("%A"); locale.setlocale(locale.LC_TIME, "")
+    day_translation = {
+        'Monday': 'Lundi', 'Tuesday': 'Mardi', 'Wednesday': 'Mercredi',
+        'Thursday': 'Jeudi', 'Friday': 'Vendredi'
+    }
+    current_day_fr = day_translation.get(current_day, 'Lundi')
+    
+    # Détection automatique période
+    if current_hour < 12:
+        period = "morning"
+        period_label = "Matinée"
+        time_range = "8h - 12h"
+        time_slots = [
+            {'start_time': '08:00', 'end_time': '09:00', 'label': '8h-9h'},
+            {'start_time': '09:00', 'end_time': '10:00', 'label': '9h-10h'},
+            {'start_time': '10:15', 'end_time': '11:15', 'label': '10h15-11h15'},
+            {'start_time': '11:15', 'end_time': '12:15', 'label': '11h15-12h15'},
+        ]
+    else:
+        period = "afternoon"
+        period_label = "Après-midi"
+        time_range = "13h - 17h"
+        time_slots = [
+            {'start_time': '13:30', 'end_time': '14:30', 'label': '13h30-14h30'},
+            {'start_time': '14:30', 'end_time': '15:30', 'label': '14h30-15h30'},
+            {'start_time': '15:45', 'end_time': '16:45', 'label': '15h45-16h45'},
+            {'start_time': '16:45', 'end_time': '17:45', 'label': '16h45-17h45'},
+        ]
+    
+    # Semaine actuelle
+    week_num = now.isocalendar()[1]
+    if now.year == 2025 and week_num >= 36:
+        weeks_since_start = week_num - 36
+        is_type_A = (weeks_since_start % 2) == 0
+        week_type = "A" if is_type_A else "B"
+        current_week = f"Semaine {week_num} {week_type}"
+    
+    # Récupérer tous les cours du jour actuel
+    all_courses = schedule_manager.get_all_courses()
+    day_courses = [c for c in all_courses 
+                   if c.week_name == current_week 
+                   and c.day == current_day_fr 
+                   and c.assigned_room]
+    
+    # Filtrer par période avec logique plus inclusive
+    period_courses = []
+    for course in day_courses:
+        course_hour = int(course.start_time.split(':')[0])
+        if period == "morning" and course_hour < 13:  # Élargi pour inclure 12h
+            period_courses.append(course)
+        elif period == "afternoon" and course_hour >= 12:  # Commence à 12h
+            period_courses.append(course)
+    
+    # Trier les cours par horaire puis par ordre alphabétique des professeurs
+    def sort_courses(course):
+        prof_name = course.professor
+        # Enlever "M " ou "Mme " pour le tri alphabétique
+        if prof_name.startswith('M '):
+            prof_name = prof_name[2:]
+        elif prof_name.startswith('Mme '):
+            prof_name = prof_name[4:]
+        return (course.start_time, prof_name.lower())
+    
+    period_courses.sort(key=sort_courses)
+    
+    # Créer des créneaux dynamiques basés sur les horaires réels des cours
+    actual_time_slots = {}
+    
+    # Grouper les cours par horaire de début
+    for course in period_courses:
+        start_time = course.start_time
+        end_time = course.end_time
+        
+        # Créer un label pour ce créneau
+        hour_start = int(start_time.split(':')[0])
+        min_start = int(start_time.split(':')[1]) if ':' in start_time else 0
+        hour_end = int(end_time.split(':')[0]) if end_time else hour_start + 1
+        min_end = int(end_time.split(':')[1]) if ':' in end_time and end_time else 0
+        
+        # Format du label (ex: "8h-9h", "10h15-11h15")
+        if min_start == 0 and min_end == 0:
+            label = f"{hour_start}h-{hour_end}h"
+        elif min_start == 0:
+            label = f"{hour_start}h-{hour_end}h{min_end:02d}"
+        elif min_end == 0:
+            label = f"{hour_start}h{min_start:02d}-{hour_end}h"
+        else:
+            label = f"{hour_start}h{min_start:02d}-{hour_end}h{min_end:02d}"
+        
+        # Grouper les cours qui ont exactement le même horaire
+        time_key = f"{start_time}-{end_time}"
+        
+        if time_key not in actual_time_slots:
+            actual_time_slots[time_key] = {
+                'time_info': {
+                    'start_time': start_time,
+                    'end_time': end_time,
+                    'label': label
+                },
+                'courses': [],
+                'sort_key': start_time
+            }
+        
+        course_dict = asdict(course)
+        course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
+        course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
+        actual_time_slots[time_key]['courses'].append(course_dict)
+    
+    # Trier les créneaux par horaire et les cours par prof
+    filtered_time_slots = []
+    filtered_time_slots_data = {}
+    
+    # Trier les créneaux par horaire de début puis par horaire de fin
+    def sort_time_slots(item):
+        time_key, slot_data = item
+        start_time = slot_data['sort_key']
+        end_time = slot_data['time_info']['end_time']
+        
+        # Convertir en minutes pour tri précis
+        start_minutes = TimeSlotService.time_to_minutes(start_time)
+        end_minutes = TimeSlotService.time_to_minutes(end_time)
+        
+        # Trier d'abord par heure de début, puis par heure de fin
+        return (start_minutes, end_minutes)
+    
+    sorted_slots = sorted(actual_time_slots.items(), key=sort_time_slots)
+    
+    for time_key, slot_data in sorted_slots:
+        # Trier les cours du créneau par ordre alphabétique de prof
+        slot_data['courses'].sort(key=lambda c: c['professor'].replace('M ', '').replace('Mme ', '').lower())
+        
+        filtered_time_slots.append(slot_data['time_info'])
+        filtered_time_slots_data[slot_data['time_info']['label']] = slot_data
+    
+    # Déterminer le template selon le layout
+    template_map = {
+        "standard": "kiosque_halfday.html",
+        "compact": "kiosque_halfday_compact.html", 
+        "wide": "kiosque_halfday_wide.html",
+        "ipad": "kiosque_halfday_compact.html",
+        "grid4": "kiosque_halfday_grid4.html",
+        "compactv1": "kiosque_halfday_compactv1.html",
+        "compactv2": "kiosque_halfday_compactv2.html", 
+        "compactv3": "kiosque_halfday_compactv3.html",
+        "compactv4": "kiosque_halfday_compactv4.html",
+        "compactv5": "kiosque_halfday_compactv5.html",
+        "compactv6": "kiosque_halfday_compactv6.html",
+        "compactv7": "kiosque_halfday_compactv7.html",
+        "compactv8": "kiosque_halfday_compactv8.html",
+        "compactv9": "kiosque_halfday_compactv9.html",
+        "compactv10": "kiosque_halfday_compactv10.html",
+        "compactv11": "kiosque_halfday_compactv11.html"
+    }
+    
+    template_name = template_map.get(layout, "kiosque_halfday.html")
+    
+    return render_template(template_name,
+                         time_slots_data=filtered_time_slots_data,
+                         time_slots=filtered_time_slots,
+                         current_week=current_week,
+                         current_day=current_day_fr,
+                         period=period,
+                         period_label=period_label,
+                         time_range=time_range,
+                         total_courses=len(period_courses),
+                         current_time=now.strftime('%H:%M'),
+                         layout=layout)
+
+@app.route('/api/display/current')
+def api_display_current():
+    """API JSON - cours actuels"""
+    now = datetime.now(pytz.timezone("Europe/Paris"))
+    current_time = now.strftime('%H:%M')
+    current_day = now.strftime('%A')
+    day_translation = {
+        'Monday': 'Lundi', 'Tuesday': 'Mardi', 'Wednesday': 'Mercredi',
+        'Thursday': 'Jeudi', 'Friday': 'Vendredi'
+    }
+    current_day_fr = day_translation.get(current_day, 'Lundi')
+    
+    week_num = now.isocalendar()[1]
+    if now.year == 2025 and week_num >= 36:
+        weeks_since_start = week_num - 36
+        is_type_A = (weeks_since_start % 2) == 0
+        week_type = "A" if is_type_A else "B"
+        current_week = f"Semaine {week_num} {week_type}"
+    
+    all_courses = schedule_manager.get_all_courses()
+    current_courses = []
+    
+    for course in all_courses:
+        if (course.week_name == current_week and 
+            course.day == current_day_fr and 
+            course.assigned_room and
+            course.start_time <= current_time <= course.end_time):
+            
+            course_dict = asdict(course)
+            course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room)
+            current_courses.append(course_dict)
+    
+    return jsonify({
+        'current_time': current_time,
+        'current_day': current_day_fr,
+        'current_week': current_week,
+        'courses': current_courses,
+        'total_courses': len(current_courses)
+    })
+
+# ============== ROUTES ORIGINALES ==============
+
+@app.route('/professor/<path:prof_name>')
+def professor_schedule(prof_name):
+    """Vue individuelle de l'emploi du temps d'un professeur."""
+    schedule_manager.force_sync_data()
+    
+    # Charger le mapping des salles
+    import json
+    import os
+    room_mapping = {}
+    try:
+        salle_path = os.path.join(os.path.dirname(__file__), 'data', 'salle.json')
+        with open(salle_path, 'r', encoding='utf-8') as f:
+            salle_data = json.load(f)
+            for room in salle_data.get('rooms', []):
+                room_mapping[room['_id']] = room['name']
+    except FileNotFoundError:
+        pass
+    
+    # Normaliser le nom du professeur
+    from excel_parser import normalize_professor_name
+    # Recherche intelligente du nom du professeur
+    all_courses = schedule_manager.get_all_courses()
+    all_profs = set([c.professor for c in all_courses])
+    
+    # Essayer d'abord le nom exact
+    if prof_name in all_profs:
+        final_prof_name = prof_name
+    else:
+        # Rechercher un nom qui contient le terme recherché
+        matches = [p for p in all_profs if prof_name.lower() in p.lower()]
+        if matches:
+            final_prof_name = matches[0]  # Prendre le premier match
+        else:
+            # Rechercher dans l'autre sens (terme recherché contient un nom de prof)
+            reverse_matches = [p for p in all_profs if p.lower() in prof_name.lower()]
+            if reverse_matches:
+                final_prof_name = reverse_matches[0]
+            else:
+                final_prof_name = prof_name  # Garder l'original si aucun match
+    
+    prof_name = final_prof_name
+    
+    # Récupérer toutes les semaines réelles des données
+    all_courses = schedule_manager.get_all_courses()
+    available_weeks = sorted(set([c.week_name for c in all_courses]))
+    
+    # Créer weeks_list avec les vraies semaines
+    weeks_list = []
+    for week_name in available_weeks:
+        weeks_list.append({
+            'name': week_name,
+            'date': None,  # Pas de date spécifique
+            'full_name': week_name
+        })
+    
+    # Récupérer les cours du professeur pour toutes les semaines
+    professor_courses = {}
+    
+    for week in weeks_list:
+        week_name = week['name']
+        week_courses = []
+        
+        for course in all_courses:
+            if course.professor == prof_name and course.week_name == week_name:
+                # Convertir l'ID de salle en nom de salle
+                room_name = "Non attribuée"
+                if course.assigned_room:
+                    room_name = room_mapping.get(course.assigned_room, f"Salle {course.assigned_room}")
+                
+                week_courses.append({
+                    'day': course.day,
+                    'start_time': course.start_time,
+                    'end_time': course.end_time,
+                    'subject': course.course_type,
+                    'room': room_name,
+                    'tp_name': getattr(course, 'tp_name', course.course_type)
+                })
+        
+        if week_courses:
+            # Trier par jour et heure
+            days_order = {'Lundi': 0, 'Mardi': 1, 'Mercredi': 2, 'Jeudi': 3, 'Vendredi': 4}
+            week_courses.sort(key=lambda x: (days_order.get(x['day'], 5), x['start_time']))
+            professor_courses[week_name] = week_courses
+    
+    return render_template('professor_schedule.html', 
+                         professor_name=prof_name,
+                         professor_courses=professor_courses,
+                         weeks_list=weeks_list)
+
+
+@app.route("/export_week_pdf/<week_name>")
+def export_week_pdf(week_name):
+    """Exporte la semaine en PDF avec une page par professeur."""
+    try:
+
+        def get_day_date(day, week_name):
+            import datetime, re
+            match = re.search(r'Semaine (\d+)', week_name)
+            if not match or day not in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']:
+                return ''
+            
+            week_num = int(match.group(1))
+            base_date = date(2025, 9, 1) if week_num >= 36 else date(2026, 1, 5)
+            weeks_offset = week_num - 36 if week_num >= 36 else week_num - 1
+            monday_date = base_date + timedelta(weeks=weeks_offset)
+            
+            days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+            day_index = days.index(day)
+            day_date = monday_date + timedelta(days=day_index)
+            return day_date.strftime('%d/%m')
+
+        # Forcer la synchronisation des données
+        schedule_manager.force_sync_data()
+        
+        # Récupérer tous les cours pour la semaine
+        all_courses = schedule_manager.get_all_courses()
+        week_courses = [c for c in all_courses if c.week_name == week_name]
+        
+        # Grouper par professeur
+        prof_courses = {}
+        for course in week_courses:
+            prof = course.professor
+            if prof not in prof_courses:
+                prof_courses[prof] = []
+            prof_courses[prof].append(course)
+        
+        # Créer le PDF en mémoire
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        story = []
+        
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Centré
+        )
+        
+        prof_title_style = ParagraphStyle(
+            'ProfTitle',
+            parent=styles['Heading2'],
+            fontSize=14,
+            spaceAfter=20,
+            textColor=colors.darkblue
+        )
+        
+        # Titre principal
+        story.append(Paragraph(f"Emploi du temps - {week_name}", title_style))
+        
+        # Date de génération
+        from datetime import datetime
+        generation_date = datetime.now().strftime("%d/%m/%Y à %H:%M")
+        date_style = ParagraphStyle(
+            'DateStyle',
+            parent=styles['Normal'],
+            fontSize=10,
+            alignment=1,
+            textColor=colors.grey
+        )
+        story.append(Paragraph(f"Généré le {generation_date}", date_style))
+        story.append(Spacer(1, 20))
+        
+        # Résumé du nombre de cours par professeur
+        summary_style = ParagraphStyle(
+            'SummaryStyle',
+            parent=styles['Normal'],
+            fontSize=11,
+            alignment=0,
+            spaceAfter=20
+        )
+        story.append(Paragraph(f"Nombre de professeurs : {len(prof_courses)}", summary_style))
+        story.append(Paragraph(f"Nombre total de cours : {len(week_courses)}", summary_style))
+        story.append(Spacer(1, 20))
+        
+        # Fonction pour nettoyer le nom du professeur pour le tri
+        def clean_prof_name(name):
+            """Supprime les préfixes Mme et M pour le tri alphabétique"""
+            name = name.strip()
+            if name.startswith('Mme '):
+                return name[4:]  # Supprime "Mme "
+            elif name.startswith('M '):
+                return name[2:]   # Supprime "M "
+            return name
+        
+        # Trier les professeurs par ordre alphabétique (en ignorant Mme/M)
+        sorted_professors = sorted(prof_courses.keys(), key=clean_prof_name)
+        
+        # Pour chaque professeur (trié)
+        for prof_name in sorted_professors:
+            courses = prof_courses[prof_name]
+            # Titre du professeur
+            story.append(Paragraph(f"Professeur : {prof_name}", prof_title_style))
+            
+            # Trier les cours par jour et heure
+            days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+            sorted_courses = sorted(courses, key=lambda x: (days_order.index(x.day) if x.day in days_order else 999, x.start_time))
+            
+            # Créer le tableau des cours
+            if sorted_courses:
+                # En-têtes du tableau
+                data = [['Jour', 'Horaire', 'Salle']]
+                
+                for course in sorted_courses:
+                    # Obtenir le nom de la salle
+                    room_name = "Non assignée"
+                    if course.assigned_room:
+                        room_name = schedule_manager.get_room_name(course.assigned_room)
+                    
+                    # Formater l'horaire
+                    time_slot = f"{course.start_time} - {course.end_time}"
+                    
+                    # N'afficher que Jour, Horaire, Salle
+                    data.append([
+                        f"{course.day} ({get_day_date(course.day, week_name)})",
+                        time_slot,
+                        room_name
+                    ])
+                
+                # Créer le tableau (3 colonnes)
+                table = Table(data, colWidths=[1.5*inch, 1.8*inch, 2.2*inch])
+                
+                # Style du tableau
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ]))
+                
+                story.append(table)
+                story.append(Spacer(1, 30))
+            
+            # Saut de page pour le prochain professeur (sauf le dernier)
+            if sorted_professors.index(prof_name) < len(sorted_professors) - 1:
+                story.append(PageBreak())
+        
+        # Générer le PDF
+        doc.build(story)
+        buffer.seek(0)
+        
+        # Retourner le PDF
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"emploi_du_temps_{week_name.replace(' ', '_')}.pdf",
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        return f"Erreur lors de la génération du PDF: {str(e)}", 500
+
+@app.route('/export_day_pdf/<week_name>/<day_name>')
+def export_day_pdf(week_name, day_name):
+    """Exporte les cours d'une journée en PDF sur une seule page."""
+    try:
+        # Récupérer tous les cours pour la journée
+        all_courses = schedule_manager.get_all_courses()
+        day_courses = [c for c in all_courses if c.week_name == week_name and c.day == day_name and c.assigned_room]
+        
+        # Trier par heure de début
+        day_courses.sort(key=lambda x: x.start_time)
+        
+        # Séparer les cours du matin et de l'après-midi
+        morning_courses = [c for c in day_courses if int(c.start_time.split(':')[0]) < 12]
+        afternoon_courses = [c for c in day_courses if int(c.start_time.split(':')[0]) >= 12]
+
+        # Créer le PDF en mémoire
+        buffer = io.BytesIO()
+        # Marges très petites
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=20, bottomMargin=20, leftMargin=20, rightMargin=20)
+        story = []
+        
+        # Styles
+        styles = getSampleStyleSheet()
+
+        # Style pour le titre principal (journée)
+        day_title_style = ParagraphStyle(
+            'DayTitle',
+            parent=styles['h1'],
+            fontSize=16,
+            spaceAfter=20,
+            alignment=1 # Centré
+        )
+        story.append(Paragraph(f"{day_name} - {week_name}", day_title_style))
+
+        # Style pour les titres de période
+        period_title_style = ParagraphStyle(
+            'PeriodTitle',
+            parent=styles['h2'],
+            fontSize=14,
+            spaceAfter=15,
+            alignment=1 # Centré
+        )
+
+        def create_course_table(courses):
+            """Crée un objet Table pour une liste de cours."""
+            if not courses:
+                return None
+            
+            data = [['Heure', 'Professeur', 'Salle']]
+            for course in courses:
+                room_name = schedule_manager.get_room_name(course.assigned_room) if course.assigned_room else "N/A"
+                data.append([
+                    f"{course.start_time} - {course.end_time}",
+                    course.professor,
+                    room_name
+                ])
+            
+            table = Table(data, colWidths=[150, 220, 150])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.darkgrey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, '#f0f0f0']),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ]))
+            return table
+
+        # Ajouter la table du matin
+        if morning_courses:
+            story.append(Paragraph("Matinée", period_title_style))
+            morning_table = create_course_table(morning_courses)
+            story.append(morning_table)
+
+        # Ajouter un saut de page si les deux périodes ont des cours
+        if morning_courses and afternoon_courses:
+            story.append(PageBreak())
+
+        # Ajouter la table de l'après-midi
+        if afternoon_courses:
+            story.append(Paragraph("Après-midi", period_title_style))
+            afternoon_table = create_course_table(afternoon_courses)
+            story.append(afternoon_table)
+
+        if not morning_courses and not afternoon_courses:
+            story.append(Paragraph("Aucun cours programmé pour cette journée.", period_title_style))
+        
+        # Construire le PDF
+        doc.build(story)
+        
+        # Préparer la réponse
+        buffer.seek(0)
+        filename = f"cours_{day_name}_{week_name.replace(' ', '_')}.pdf"
+        
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        return f"Erreur lors de la génération du PDF: {str(e)}", 500
+
+@app.route('/day/<week_name>/<day_name>')
+def day_view(week_name, day_name):
+    """Page d'attribution des salles pour un jour spécifique au format paysage."""
+    # Forcer la synchronisation des données en production
+    schedule_manager.force_sync_data()
+    
+    def generate_time_grid():
+        """Génère une grille horaire de 8h à 18h avec créneaux d'1 heure"""
+        time_slots = []
+        for hour in range(8, 18):
+            start_time = f"{hour:02d}:00"
+            end_time = f"{hour+1:02d}:00"
+            time_slots.append({
+                'start_time': start_time,
+                'end_time': end_time,
+                'label': f"{hour}h-{hour+1}h"
+            })
+        return time_slots
+
+    # Générer la grille horaire
+    time_slots = generate_time_grid()
+    
+    # Récupérer tous les cours pour la semaine et le jour spécifiés
+    all_courses_obj = schedule_manager.get_all_courses()
+    day_courses = []
+    
+    for course in all_courses_obj:
+        if course.week_name == week_name and course.day == day_name:
+            course_dict = asdict(course)
+            course_dict['room_name'] = schedule_manager.get_room_name(course.assigned_room) if course.assigned_room else "Non assignée"
+            course_dict['prof_color'] = schedule_manager.get_prof_color(course.professor)
+            day_courses.append(course_dict)
+    
+    # Créer une grille pour le jour spécifique
+    day_grid = {}
+    for time_slot in time_slots:
+        day_grid[time_slot['label']] = {
+            'time_info': time_slot,
+            'courses': []
+        }
+    
+    # Placer les cours dans la grille
+    for course in day_courses:
+        course_start = course.get('start_time', '')
+        
+        # Trouver le créneau correspondant
+        for time_slot in time_slots:
+            slot_start = time_slot['start_time']
+            slot_end = time_slot['end_time']
+            
+            # Vérifier si le cours commence dans ce créneau
+            if course_start >= slot_start and course_start < slot_end:
+                day_grid[time_slot['label']]['courses'].append(course)
+                break
+    
+    return render_template('day_view.html', 
+                         day_grid=day_grid,
+                         time_slots=time_slots,
+                         day_name=day_name,
+                         week_name=week_name,
+                         rooms=schedule_manager.rooms,
+                         get_room_name=schedule_manager.get_room_name)
+
+
+
+@app.route('/test_template')  
+def test_template():
+    """Route de test pour vérifier les templates."""
+    schedule_manager.reload_data()
+    summary = schedule_manager.get_canonical_schedules_summary()
+    prof_id_mapping = get_all_professors_with_ids()
+    
+    return render_template('test_template.html', 
+                         summary=summary, 
+                         prof_id_mapping=prof_id_mapping)
+
+
+
+@app.route('/professor/id/<prof_id>')
+def professor_by_id(prof_id):
+    """Redirects to professor schedule using ID."""
+    prof_id_mapping = ProfessorService.load_professor_id_mapping()
+
+    if not prof_id_mapping:
+        return render_template('error.html', error="ID mapping not found"), 404
+
+    # Utiliser le service pour trouver le nom du professeur
+    prof_name = ProfessorService.find_professor_by_id(prof_id, prof_id_mapping)
+
+    if not prof_name:
+        return render_template('error.html', error=f"Professor ID {prof_id} not found"), 404
+
+    # Utiliser la route existante qui fonctionne
+    return professor_schedule(prof_name)
+
+def get_all_professors_with_ids():
+    """Retourne un dictionnaire {nom: id} pour tous les professeurs."""
+    return ProfessorService.get_all_professors_with_ids()
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5005) 
+# ==================== OPTIMISATIONS PLANNING V2 - FINAL ====================
+
+class PlanningCache:
+    """Cache pour optimiser les performances du planning"""
+    def __init__(self):
+        self._academic_weeks = None
+        self._courses_cache = {}
+        self._last_sync_time = 0
+        
+    def clear(self):
+        self._academic_weeks = None
+        self._courses_cache.clear()
+        self._last_sync_time = 0
+        
+    def is_cache_valid(self):
+        import time
+        try:
+            sync_file = "data/.last_sync"
+            if os.path.exists(sync_file):
+                with open(sync_file, 'r') as f:
+                    last_sync = float(f.read().strip())
+                return last_sync == self._last_sync_time
+        except:
+            pass
+        return False
+        
+    def update_sync_time(self):
+        import time
+        try:
+            sync_file = "data/.last_sync"
+            if os.path.exists(sync_file):
+                with open(sync_file, 'r') as f:
+                    self._last_sync_time = float(f.read().strip())
+        except:
+            self._last_sync_time = time.time()
+
+planning_cache = PlanningCache()
+
+def get_cached_academic_weeks():
+    """Génère et cache la liste des semaines académiques"""
+    if planning_cache._academic_weeks is None:
+        weeks = []
+        is_type_A = True
+        
+        start_date = date(2025, 9, 1)
+        for week_num in range(36, 53):
+            week_type = "A" if is_type_A else "B"
+            week_offset = (week_num - 36) * 7
+            monday_date = start_date + timedelta(days=week_offset)
+            date_str = monday_date.strftime("%d/%m/%Y")
+            
+            weeks.append({
+                'name': f"Semaine {week_num} {week_type}",
+                'date': date_str,
+                'full_name': f"Semaine {week_num} {week_type} ({date_str})"
+            })
+            is_type_A = not is_type_A
+            
+        january_start = date(2026, 1, 5)
+        for week_num in range(1, 36):
+            week_type = "A" if is_type_A else "B"
+            week_offset = (week_num - 1) * 7
+            monday_date = january_start + timedelta(days=week_offset)
+            date_str = monday_date.strftime("%d/%m/%Y")
+            
+            weeks.append({
+                'name': f"Semaine {week_num:02d} {week_type}",
+                'date': date_str,
+                'full_name': f"Semaine {week_num:02d} {week_type} ({date_str})"
+            })
+            is_type_A = not is_type_A
+            
+        planning_cache._academic_weeks = weeks
+    
+    return planning_cache._academic_weeks
+
+def get_courses_for_week_canonical(week_name):
+    """Récupère les cours pour une semaine - utilise get_all_courses() avec filtrage"""
+    # Vérifier le cache
+    if not planning_cache.is_cache_valid():
+        planning_cache.clear()
+        planning_cache.update_sync_time()
+    
+    if week_name not in planning_cache._courses_cache:
+        # Utiliser get_all_courses() et filtrer par semaine
+        all_courses = schedule_manager.get_all_courses()
+        courses = [course for course in all_courses if course.week_name == week_name]
+        
+        # Mettre en cache
+        planning_cache._courses_cache[week_name] = courses
+        print(f"🔍 Cache mis à jour: {len(courses)} cours pour {week_name}")
+    
+    return planning_cache._courses_cache[week_name]
+
+def build_weekly_grid_optimized(courses_for_week, time_slots, days_order):
+    """Construction optimisée de la grille hebdomadaire"""
+    time_slots_minutes = []
+    for slot in time_slots:
+        time_slots_minutes.append({
+            'label': slot['label'],
+            'start_min': TimeSlotService.time_to_minutes(slot['start_time']),
+            'end_min': TimeSlotService.time_to_minutes(slot['end_time']),
+            'slot_info': slot
+        })
+    
+    weekly_grid = {}
+    for day in days_order:
+        weekly_grid[day] = {}
+        for slot in time_slots_minutes:
+            weekly_grid[day][slot['label']] = {
+                'time_info': slot['slot_info'],
+                'courses': []
+            }
+    
+    courses_by_day = {}
+    for day in days_order:
+        courses_by_day[day] = []
+    
+    prof_working_days = schedule_manager.get_prof_working_days()
+    for course in courses_for_week:
+        if course.day in courses_by_day:
+            course_dict = asdict(course)
+            course_dict['working_days'] = prof_working_days.get(course.professor, [])
+            courses_by_day[course.day].append(course_dict)
+    
+    for day in days_order:
+        day_courses = courses_by_day[day]
+        original_courses = [c for c in day_courses if not c['course_id'].startswith('custom_')]
+        custom_tps = [c for c in day_courses if c['course_id'].startswith('custom_')]
+        
+        original_lookup = {}
+        for course in original_courses:
+            key = (course['professor'], course['raw_time_slot'])
+            if key not in original_lookup:
+                original_lookup[key] = []
+            original_lookup[key].append(course)
+        
+        for course in day_courses:
+            course['related_tps'] = []
+        
+        standalone_tps = []
+        for tp in custom_tps:
+            key = (tp['professor'], tp['raw_time_slot'])
+            matching_originals = original_lookup.get(key, [])
+            if matching_originals:
+                matching_originals[0]['related_tps'].append(tp)
+            else:
+                standalone_tps.append(tp)
+        
+        courses_to_place = original_courses + standalone_tps
+        
+        for course in courses_to_place:
+            course_start_min = time_to_minutes(course['start_time'])
+            course_end_min = time_to_minutes(course['end_time'])
+            
+            primary_slot = None
+            spans_slots = []
+            
+            for slot in time_slots_minutes:
+                if not (course_end_min <= slot['start_min'] or course_start_min >= slot['end_min']):
+                    spans_slots.append(slot['label'])
+                    
+                    if course_start_min >= slot['start_min'] and course_start_min < slot['end_min'] and primary_slot is None:
+                        primary_slot = slot['label']
+            
+            if primary_slot:
+                course['is_primary_slot'] = True
+                course['spans_slots'] = spans_slots
+                
+                for slot_label in spans_slots:
+                    if slot_label == primary_slot:
+                        weekly_grid[day][slot_label]['courses'].append(course)
+                    else:
+                        continuation_course = course.copy()
+                        continuation_course['is_continuation'] = True
+                        continuation_course['primary_slot'] = primary_slot
+                        weekly_grid[day][slot_label]['courses'].append(continuation_course)
+    
+    return weekly_grid
+
+@app.route("/planning_v2_fast")
+@app.route("/planning_v2_fast/<week_name>")
+def planning_v2_fast(week_name=None):
+    """Planning V2 Optimisé - MÊME DONNÉES que /week/"""
+    import time
+    start_time = time.time()
+    
+    # Sync légère
+    try:
+        sync_file = "data/.last_sync"
+        if os.path.exists(sync_file):
+            with open(sync_file, 'r') as f:
+                last_sync = float(f.read().strip())
+            if time.time() - last_sync > 300:
+                schedule_manager.force_sync_data()
+                planning_cache.clear()
+        else:
+            schedule_manager.force_sync_data()
+            planning_cache.clear()
+    except Exception as e:
+        print(f"Erreur sync légère: {e}")
+        schedule_manager.force_sync_data()
+        planning_cache.clear()
+    
+    # Vérification cohérence
+    try:
+        room_assignments_count = len(schedule_manager.room_assignments)
+        if room_assignments_count == 0:
+            print("Warning: Aucune attribution de salle trouvée")
+    except Exception as e:
+        print(f"Erreur vérification cohérence: {e}")
+    
+    weeks_to_display = get_cached_academic_weeks()
+    
+    if not weeks_to_display:
+        return "Erreur lors de la génération du calendrier.", 500
+    
+    # Détermination de la semaine courante
+    if week_name is None:
+        today = datetime.now(pytz.timezone("Europe/Paris")).date()
+        week_num = today.isocalendar()[1]
+        
+        if today.year == 2025 and week_num >= 36:
+            weeks_since_start = week_num - 36
+            is_type_A = (weeks_since_start % 2) == 0
+            week_type = "A" if is_type_A else "B"
+            week_name = f"Semaine {week_num} {week_type}"
+        elif today.year == 2026 and week_num <= 35:
+            weeks_since_start = 17 + week_num - 1
+            is_type_A = (weeks_since_start % 2) == 0
+            week_type = "A" if is_type_A else "B"
+            week_name = f"Semaine {week_num:02d} {week_type}"
+        else:
+            week_name = weeks_to_display[0]['name']
+    
+    # Trouver les infos de la semaine
+    current_week_info = None
+    for week_info in weeks_to_display:
+        if week_info['name'] == week_name:
+            current_week_info = week_info
+            break
+    
+    if not current_week_info:
+        current_week_info = weeks_to_display[0]
+        week_name = current_week_info['name']
+    
+    # Grille horaire
+    def generate_time_grid():
+        time_slots = []
+        for hour in range(8, 18):
+            start_time = f"{hour:02d}:00"
+            end_time = f"{hour+1:02d}:00"
+            time_slots.append({
+                'start_time': start_time,
+                'end_time': end_time,
+                'label': f"{hour}h-{hour+1}h"
+            })
+        return time_slots
+    
+    time_slots = generate_time_grid()
+    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+    
+    # Récupération des cours - MÊME SOURCE que /week/
+    courses_for_week = get_courses_for_week_canonical(week_name)
+    print(f"🔢 Cours générés: {len(courses_for_week)}")
+    
+    # Construction de la grille
+    weekly_grid = build_weekly_grid_optimized(courses_for_week, time_slots, days_order)
+    
+    # Mesure des performances
+    end_time = time.time()
+    processing_time = end_time - start_time
+    print(f"⚡ Planning V2 Fast - Traitement en {processing_time:.3f}s pour {len(courses_for_week)} cours")
+    
+    return render_template('planning_v2.html',
+                         weekly_grid=weekly_grid,
+                         time_slots=time_slots,
+                         days_order=days_order,
+                         rooms=schedule_manager.rooms,
+                         get_room_name=schedule_manager.get_room_name,
+                         all_weeks=weeks_to_display,
+                         current_week=week_name,
+                         current_week_info=current_week_info,
+                         all_professors=schedule_manager.get_normalized_professors_list(),
+                         processing_time=processing_time)
+

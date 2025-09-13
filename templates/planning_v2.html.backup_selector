@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Planning V2 - Lecture Seule - {{ current_week }}</title>
+    <style>
+        :root {
+            --main-bg-color: #f4f7f6;
+            --header-bg: linear-gradient(135deg, #2c3e50, #3498db);
+            --card-bg: #fff;
+            --text-color: #333;
+            --primary-color: #3498db;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--main-bg-color); color: var(--text-color); margin: 0; }
+        .container { max-width: 95%; margin: 20px auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: #2c3e50; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .week-selector label { font-weight: bold; margin-right: 10px; }
+        .week-selector select { font-size: 1em; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; font-weight: bold; transition: all 0.2s; }
+        .btn-edit-schedules { background: #f39c12; color: white; }
+        .btn-edit-schedules:hover { background: #e67e22; }
+
+        .weekly-grid {
+            display: grid;
+            grid-template-columns: 120px repeat(5, 1fr);
+            gap: 1px;
+            background-color: #ddd;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+        }
+
+        .time-header, .day-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .time-slot {
+            background-color: #f8f9fa;
+            padding: 10px;
+            font-weight: bold;
+            text-align: center;
+            border-right: 1px solid #ddd;
+        }
+
+        .grid-cell {
+            background-color: var(--card-bg);
+            padding: 10px;
+            min-height: 80px;
+            position: relative;
+        }
+
+        .grid-cell.has-courses {
+            background-color: #f0f8ff;
+        }
+
+        .course-in-grid {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .course-in-grid.assigned { border-left-color: #4caf50; }
+        .course-in-grid.conflict { border-left-color: #f44336; }
+        .course-in-grid.continuation {
+            background: #f0f0f0;
+            border-left: 4px solid #999;
+            opacity: 0.7;
+        }
+        .course-in-grid.continuation.assigned { border-left-color: #4caf50; opacity: 0.7; }
+
+        /* Couleurs par type de cours */
+        .course-in-grid.course-tp {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+        
+        .course-in-grid.course-si {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+        
+        .course-in-grid.course-sni {
+            background: #f3e5f5;
+            border-left-color: #9c27b0;
+        }
+
+        .prof-name {
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 4px;
+        }
+
+        .course-type {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+.room-select-mini { font-size: 0.9em; padding: 2px; border: 1px solid #ddd; background-color: #f5f5f5 !important; color: #999 !important; pointer-events: none !important; cursor: not-allowed !important; }
+
+        .room-select-mini option[disabled] {
+            color: #ccc;
+            font-style: italic;
+        }
+
+        .room-select-mini option[style*="display: none"] {
+            display: none !important;
+        }
+
+        .add-course-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            font-size: 14px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .grid-cell:hover .add-course-btn {
+            display: block;
+        }
+
+        .conflict-message { 
+            color: #e74c3c; 
+            font-size: 0.8em; 
+            margin-top: 5px; 
+            display: none; 
+            background: #fdf2f2;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border-left: 3px solid #e74c3c;
+            line-height: 1.4;
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+        
+        .conflict-message br {
+            margin-bottom: 2px;
+        }
+        
+        .course-in-grid.conflict {
+            border-left-color: #e74c3c !important;
+            background: #fdf2f2 !important;
+        }
+        
+.room-select-mini { font-size: 0.9em; padding: 2px; border: 1px solid #ddd; background-color: #f5f5f5 !important; color: #999 !important; pointer-events: none !important; cursor: not-allowed !important; }
+        
+        .card-actions { margin-top: 15px; text-align: right; }
+        .btn-add-tp { font-size: 0.9em; padding: 5px 10px; background-color: #95a5a6; }
+        .btn-add-tp:hover { background-color: #7f8c8d; }
+        .btn-report-tp { font-size: 0.9em; padding: 5px 10px; background-color: #3498db; color: white; margin-left: 5px;}
+        .btn-report-tp:hover { background-color: #2980b9; }
+
+        .course-card.is-custom-tp {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+
+        .tp-name {
+            color: #e74c3c !important;
+            font-weight: bold !important;
+            font-size: 0.9em;
+            background: rgba(231, 76, 60, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 5px;
+            display: inline-block;
+        }
+
+        .tp-name:hover {
+            background: rgba(231, 76, 60, 0.2);
+        }
+
+        .btn-delete-tp {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 0.8em;
+            padding: 0;
+            margin-left: 5px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .btn-delete-tp:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .tp-name:hover .btn-delete-tp {
+            opacity: 1;
+        }
+
+        .course-in-grid.has-tp {
+            border-left: 3px solid #e74c3c;
+            background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+        }
+
+        .course-in-grid.has-tp .course-type {
+            position: relative;
+        }
+
+        .related-tps-list {
+            font-size: 0.9em;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #ccc;
+        }
+        .related-tps-list ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 5px 0 0 0;
+        }
+        .related-tps-list li {
+            background: #eee;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        @media (max-width: 1200px) { 
+            .weekly-grid { 
+                grid-template-columns: 100px repeat(3, 1fr); 
+                font-size: 0.9em;
+            } 
+        }
+        @media (max-width: 768px) { 
+            .weekly-grid { 
+                grid-template-columns: 80px repeat(2, 1fr); 
+                font-size: 0.8em;
+            } 
+            .toolbar { flex-direction: column; gap: 15px; } 
+        }
+
+        /* Styles pour le modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 30px; border-radius: 8px; width: 80%; max-width: 500px; }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+
+        .btn-action {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            padding: 4px 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-action:hover {
+            background: #e9ecef;
+            transform: scale(1.1);
+        }
+
+        .btn-add-tp-course {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+        .btn-add-tp-course:hover {
+            background: #218838;
+        }
+
+        .btn-report-course {
+            background: #ffc107;
+            color: #212529;
+            border-color: #ffc107;
+        }
+        .btn-report-course:hover {
+            background: #e0a800;
+        }
+
+        .btn-duplicate-course {
+            background: #17a2b8;
+            color: white;
+            border-color: #17a2b8;
+        }
+        .btn-duplicate-course:hover {
+            background: #138496;
+        }
+
+        .btn-delete-course {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+        .btn-delete-course:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Attribution des Salles</h1>
+            <p>Vue générale de l'emploi du temps par jour.</p>
+            {% if current_week_info %}
+            <p style="color: #666; font-size: 0.9em; margin-top: 5px;">
+                📅 Semaine du {{ current_week_info.date }}
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="toolbar">
+            <div class="week-selector">
+                <label for="week-select">Choisir une semaine :</label>
+                <select id="week-select" onchange="changeWeekPlanningV2(this.value)">
+                    {% for week in all_weeks %}
+                    <option value="{{ url_for('admin', week_name=week.name) }}" {% if week.name == current_week %}selected{% endif %}>
+                        {{ week.full_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <a href="{{ url_for('export_week_pdf', week_name=current_week) }}" class="btn" style="background: #e74c3c; color: white;">📄 Exporter PDF</a>
+            </div>
+        </div>
+
+        <div class="weekly-grid">
+            <!-- En-tête vide pour la colonne des heures -->
+            <div class="time-header">Heures</div>
+            
+            <!-- En-têtes des jours -->
+            {% for day in days_order %}
+            <div class="day-header">
+                <a href="{{ url_for('day_view', week_name=current_week, day_name=day) }}" 
+                   style="color: white; text-decoration: none; display: block; padding: 5px; border-radius: 3px; transition: background-color 0.2s;"
+                   onmouseover="this.style.backgroundColor='rgba(255,255,255,0.2)'"
+                   onmouseout="this.style.backgroundColor='transparent'"
+                   title="Voir {{ day }} en détail">
+                    {{ day }}
+                </a>
+            </div>
+            {% endfor %}
+
+            <!-- Lignes de créneaux horaires -->
+            {% for time_slot in time_slots %}
+                <!-- Colonne des heures -->
+                <div class="time-slot">{{ time_slot.label }}</div>
+                
+                <!-- Colonnes des jours -->
+                {% for day in days_order %}
+                    {% set cell_data = weekly_grid[day][time_slot.label] %}
+                    <div class="grid-cell {% if cell_data.courses %}has-courses{% endif %}" 
+                         data-day="{{ day }}" 
+                         data-time="{{ time_slot.label }}">
+                        
+                        {% for course in cell_data.courses %}
+                            {% set is_custom = course.course_id.startswith('custom_') %}
+                            {% set is_continuation = course.get('is_continuation', False) %}
+                            <div class="course-in-grid 
+                                {% if course.assigned_room %}assigned{% endif %}
+                                {% if is_custom %}is-custom-tp{% endif %}
+                                {% if is_continuation %}continuation{% endif %}
+                                {% if course.course_type and 'TP' in course.course_type %}course-tp{% endif %}
+                                {% if course.course_type and 'SI' in course.course_type %}course-si{% endif %}
+                                {% if course.course_type and 'SNI' in course.course_type %}course-sni{% endif %}" 
+                                data-course-id="{{ course.course_id }}">
+                                
+                                {% if is_continuation %}
+                                    <!-- Affichage simplifié pour les continuations -->
+                                    <div class="prof-name" style="font-size: 0.8em;">{{ course.professor }}</div>
+                                    <div class="course-type" style="font-size: 0.7em;">(suite)</div>
+                                {% else %}
+                                    <!-- Affichage complet pour le cours principal -->
+                                    <div class="prof-name">{{ course.professor }}</div>
+                                    <div class="course-type" style="font-weight: bold; font-size: 1.1em;">{{ course.course_type }}{% if is_custom %} (TP){% endif %}</div>
+                                    <div class="course-duration">{{ course.raw_time_slot }} - {{ course.nb_students }} élèves</div>
+                                    
+                                    <select class="room-select-mini" disabled style="pointer-events: none; background-color: #f5f5f5; color: #999;">
+                                        <option value="">-- Salle --</option>
+                                        {% for room in rooms %}
+                                        <option value="{{ room.id }}" {% if course.assigned_room and course.assigned_room == room.id|string %}selected{% endif %}>
+                                            {{ room.nom }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    
+                                    <!-- Boutons d'action -->
+                                    
+                                    {% if course.related_tps %}
+                                    <div class="related-tps-display" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc;">
+                                        <div style="font-size: 0.8em; font-weight: bold; color: #666; margin-bottom: 4px;">TPs associés :</div>
+                                        {% for tp in course.related_tps %}
+                                        <div class="tp-item" style="background: #e8f5e9; padding: 4px 8px; margin-bottom: 4px; border-radius: 3px; font-size: 0.8em; display: flex; justify-content: space-between; align-items: center;">
+                                            <span><strong>{{ tp.course_type }}</strong> ({{ tp.professor }})</span>
+                                            <div style="display: flex; gap: 2px;">
+                                                <button class="btn-action btn-report-course" 
+                                                        data-course-id="{{ tp.course_id }}" 
+                                                        data-working-days="{{ tp.working_days|tojson }}"
+                                                        title="Reporter ce TP"
+                                                        style="font-size: 10px; padding: 2px 4px;">
+                                                    ⤵️
+                                                </button>
+                                                <button class="btn-action btn-delete-course" 
+                                                        data-course-id="{{ tp.course_id }}"
+                                                        title="Supprimer ce TP"
+                                                        style="font-size: 10px; padding: 2px 4px;">
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        
+                        <!-- Bouton pour ajouter un cours -->
+                        <button class="add-course-btn" 
+                                data-day="{{ day }}" 
+                                data-time="{{ time_slot.label }}"
+                                title="Ajouter un cours">+</button>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Modal pour ajouter un TP -->
+    <div id="add-tp-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2 id="tp-modal-title">Ajouter un TP</h2>
+            <form id="add-tp-form">
+                <input type="hidden" id="tp-day" name="day">
+                <input type="hidden" id="tp-week" name="week_name" value="{{ current_week }}">
+                <input type="hidden" id="tp-course-id" name="course_id">
+                <input type="hidden" id="tp-mode" name="mode" value="add">
+                <div class="form-group">
+                    <label for="tp-name">Nom du TP</label>
+                    <input type="text" id="tp-name" name="course_type" required>
+                </div>
+                <div class="form-group">
+                    <label for="tp-prof">Professeur</label>
+                    <select id="tp-prof" name="professor" required>
+                        <option value="">-- Choisir un professeur --</option>
+                        {% for prof in all_professors %}
+                        <option value="{{ prof }}">{{ prof }}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: #666; font-size: 0.8em;">Le professeur du cours sera automatiquement sélectionné</small>
+                </div>
+                <div class="form-group">
+                    <label for="tp-time">Créneau (ex: 8h-10h)</label>
+                    <input type="text" id="tp-time" name="raw_time_slot" required>
+                </div>
+                <button type="submit" id="tp-submit-btn" class="btn btn-add">Ajouter le TP</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal pour reporter un TP -->
+    <div id="report-tp-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Reporter un TP</h2>
+            <form id="report-tp-form">
+                <input type="hidden" id="report-course-id" name="course_id">
+                <div class="form-group">
+                    <label for="report-day">Nouveau Jour</label>
+                    <select id="report-day" name="day" required>
+                        <!-- Les options seront générées par JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="report-week">Nouvelle Semaine</label>
+                    <select id="report-week" name="week_name" required>
+                        {% for week in all_weeks %}
+                        <option value="{{ week.name }}">{{ week.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn">Confirmer le report</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal pour dupliquer un cours -->
+    <div id="duplicate-course-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Dupliquer un cours</h2>
+            <form id="duplicate-course-form">
+                <input type="hidden" id="duplicate-prof" name="professor">
+                <input type="hidden" id="duplicate-course-type" name="course_type">
+                <input type="hidden" id="duplicate-time" name="raw_time_slot">
+                <div class="form-group">
+                    <label for="duplicate-days">Dupliquer vers quels jours ?</label>
+                    <div id="duplicate-days" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                        <label><input type="checkbox" name="days" value="Lundi"> Lundi</label>
+                        <label><input type="checkbox" name="days" value="Mardi"> Mardi</label>
+                        <label><input type="checkbox" name="days" value="Mercredi"> Mercredi</label>
+                        <label><input type="checkbox" name="days" value="Jeudi"> Jeudi</label>
+                        <label><input type="checkbox" name="days" value="Vendredi"> Vendredi</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="duplicate-weeks">Dupliquer vers quelles semaines ?</label>
+                    <select id="duplicate-weeks" name="weeks" multiple style="height: 120px;">
+                        {% for week in all_weeks %}
+                        <option value="{{ week.name }}">{{ week.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <small>Maintenez Ctrl (Cmd sur Mac) pour sélectionner plusieurs semaines</small>
+                </div>
+                <button type="submit" class="btn">Dupliquer le cours</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    // Fonction pour initialiser la sélection automatique des salles
+    function initializeRoomSelection() {
+        document.querySelectorAll('.course-in-grid').forEach(courseDiv => {
+            const select = courseDiv.querySelector('.room-select-mini');
+            if (select && select.value) {
+                // Marquer comme assigné si une salle est déjà sélectionnée
+                courseDiv.classList.add('assigned');
+                courseDiv.dataset.previousRoom = select.value;
+                
+                // Vérifier les conflits au chargement
+                setTimeout(() => filterRoomOptions(select), 100);
+            }
+        });
+    }
+
+
+    // Fonction pour initialiser la sélection automatique des salles
+    function initializeRoomSelection() {
+        document.querySelectorAll('.course-in-grid').forEach(courseDiv => {
+            const select = courseDiv.querySelector('.room-select-mini');
+            if (select && select.value) {
+                // Marquer comme assigné si une salle est déjà sélectionnée
+                courseDiv.classList.add('assigned');
+                courseDiv.dataset.previousRoom = select.value;
+                
+                // Vérifier les conflits au chargement
+                setTimeout(() => filterRoomOptions(select), 100);
+            }
+        });
+    }
+
+
+    // Cache avec TTL pour éviter les requêtes répétées
+    const occupiedRoomsCache = new Map();
+    const CACHE_TTL = 5000; // 5 secondes
+    let pendingRequests = new Map(); // Pour éviter les requêtes doublons
+
+    // Fonction optimisée avec cache et déduplication
+    async function getOccupiedRooms(courseId) {
+        const now = Date.now();
+        
+        // Vérifier le cache
+        if (occupiedRoomsCache.has(courseId)) {
+            const cached = occupiedRoomsCache.get(courseId);
+            if (now - cached.timestamp < CACHE_TTL) {
+                return cached.data;
+            }
+        }
+        
+        // Éviter les requêtes doublons
+        if (pendingRequests.has(courseId)) {
+            return pendingRequests.get(courseId);
+        }
+        
+        // Créer la promesse de requête
+        const requestPromise = fetch('/api/get_occupied_rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ course_id: courseId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const occupiedRooms = data.occupied_rooms || [];
+            
+            // Mettre en cache
+            occupiedRoomsCache.set(courseId, {
+                data: occupiedRooms,
+                timestamp: now
+            });
+            
+            // Nettoyer les requêtes en cours
+            pendingRequests.delete(courseId);
+            
+            return occupiedRooms;
+        })
+        .catch(error => {
+            console.error('Erreur lors de la récupération des salles occupées:', error);
+            pendingRequests.delete(courseId);
+            return [];
+        });
+        
+        // Stocker la promesse pour éviter les doublons
+        pendingRequests.set(courseId, requestPromise);
+        
+        return requestPromise;
+    }
+
+    // Fonction pour filtrer les options du sélecteur de salle
+    async function filterRoomOptions(selectElement) {
+        const courseDiv = selectElement.closest('.course-in-grid');
+        const courseId = courseDiv.getAttribute('data-course-id');
+        
+        // Récupérer les salles occupées pour ce créneau
+        const occupiedRooms = await getOccupiedRooms(courseId);
+        
+        // Récupérer la salle actuellement assignée
+        const currentRoom = courseDiv.querySelector('.room-select-mini').value;
+        
+        // Parcourir toutes les options et masquer celles qui sont occupées
+        Array.from(selectElement.options).forEach(option => {
+            if (option.value && occupiedRooms.includes(option.value)) {
+                // Ne pas masquer la salle actuellement assignée
+                if (option.value !== currentRoom) {
+                    option.style.display = 'none';
+                    option.disabled = true;
+                } else {
+                    option.style.display = '';
+                    option.disabled = false;
+                }
+            } else {
+                option.style.display = '';
+                option.disabled = false;
+            }
+        });
+        
+        // Vérifier s'il y a un vrai conflit (pas juste une salle occupée)
+        if (currentRoom) {
+            const courseId = courseDiv.getAttribute('data-course-id');
+            try {
+                const response = await fetch('/api/get_conflict_details', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course_id: courseId, room_id: currentRoom })
+                });
+                const conflictData = await response.json();
+                
+                if (conflictData.has_conflict) {
+                    courseDiv.classList.add('conflict');
+                    await showConflictMessage(courseDiv, currentRoom);
+                } else {
+                    courseDiv.classList.remove('conflict');
+                    hideConflictMessage(courseDiv);
+                }
+            } catch (error) {
+                console.error('Erreur vérification conflit:', error);
+                courseDiv.classList.remove('conflict');
+                hideConflictMessage(courseDiv);
+            }
+        } else {
+            courseDiv.classList.remove('conflict');
+            hideConflictMessage(courseDiv);
+        }
+    }
+    
+    // Fonction pour afficher un message de conflit détaillé
+    async function showConflictMessage(courseDiv, roomId) {
+        const courseId = courseDiv.getAttribute('data-course-id');
+        
+        try {
+            // Récupérer les détails du conflit depuis le serveur
+            const response = await fetch('/api/get_conflict_details', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ course_id: courseId, room_id: roomId })
+            });
+            
+            const data = await response.json();
+            
+            let messageDiv = courseDiv.querySelector('.conflict-message');
+            if (!messageDiv) {
+                messageDiv = document.createElement('div');
+                messageDiv.className = 'conflict-message';
+                courseDiv.appendChild(messageDiv);
+            }
+            
+            if (data.has_conflict && data.conflicts && data.conflicts.length > 0) {
+                let conflictText = '⚠️ Conflit de salle détecté :\n';
+                data.conflicts.forEach(conflict => {
+                    if (conflict.type === 'time_overlap') {
+                        conflictText += `• ${conflict.message}\n`;
+                    } else {
+                        conflictText += `• ${conflict.message}\n`;
+                    }
+                });
+                messageDiv.innerHTML = conflictText.replace(/\n/g, '<br>');
+            } else {
+                messageDiv.textContent = '⚠️ Conflit de salle détecté';
+            }
+            
+            messageDiv.style.display = 'block';
+        } catch (error) {
+            console.error('Erreur lors de la récupération des détails de conflit:', error);
+            let messageDiv = courseDiv.querySelector('.conflict-message');
+            if (!messageDiv) {
+                messageDiv = document.createElement('div');
+                messageDiv.className = 'conflict-message';
+                courseDiv.appendChild(messageDiv);
+            }
+            messageDiv.textContent = '⚠️ Conflit de salle détecté';
+            messageDiv.style.display = 'block';
+        }
+    }
+    
+    // Fonction pour masquer le message de conflit
+    function hideConflictMessage(courseDiv) {
+        const messageDiv = courseDiv.querySelector('.conflict-message');
+        if (messageDiv) {
+            messageDiv.style.display = 'none';
+        }
+    }
+
+    // Fonction d'assignation de salle optimisée
+                }
+                
+                alert(errorMessage);
+                selectElement.value = courseDiv.dataset.previousRoom || '';
+            }
+        } catch (error) {
+            console.error('Erreur assignation:', error);
+            alert('Erreur réseau lors de l\'assignation');
+        }
+    }
+
+    // Fonction pour invalider le cache
+    function invalidateCache() {
+        occupiedRoomsCache.clear();
+        pendingRequests.clear();
+    }
+
+    // Fonction optimisée pour rafraîchir seulement les filtres visibles
+    async function refreshVisibleRoomFilters() {
+        const visibleSelects = Array.from(document.querySelectorAll('.room-select-mini'))
+            .filter(select => {
+                const rect = select.getBoundingClientRect();
+                return rect.top >= 0 && rect.bottom <= window.innerHeight;
+            });
+        
+        // Traiter par lots de 5 pour éviter la surcharge
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < visibleSelects.length; i += BATCH_SIZE) {
+            const batch = visibleSelects.slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map(select => filterRoomOptions(select)));
+            
+            // Petite pause entre les lots
+            if (i + BATCH_SIZE < visibleSelects.length) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+    }
+
+    // Fonction pour rafraîchir tous les filtres (utilisée avec parcimonie)
+    async function refreshAllRoomFilters() {
+        const allSelects = document.querySelectorAll('.room-select-mini');
+        console.log(`Rafraîchissement de ${allSelects.length} sélecteurs...`);
+        
+        // Traiter par lots de 3 pour éviter la surcharge serveur
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < allSelects.length; i += BATCH_SIZE) {
+            const batch = Array.from(allSelects).slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map(select => filterRoomOptions(select)));
+            
+            // Pause entre les lots pour éviter la surcharge
+            if (i + BATCH_SIZE < allSelects.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Nettoyer toutes les classes de conflit au chargement
+        document.querySelectorAll('.course-in-grid.conflict').forEach(courseDiv => {
+            courseDiv.classList.remove('conflict');
+        });
+        
+        // Initialiser la sélection automatique des salles
+        initializeRoomSelection();
+
+        // Charger les noms de TP sauvegardés au démarrage
+        loadSavedTpNames();
+        
+        // Ajouter un bouton de rafraîchissement manuel
+        const refreshButton = document.createElement('button');
+        refreshButton.innerHTML = '🔄 Rafraîchir TPs';
+        refreshButton.className = 'btn-action';
+        refreshButton.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;';
+        refreshButton.onclick = () => {
+            console.log('Rafraîchissement manuel des TPs...');
+            loadSavedTpNames();
+        };
+        document.body.appendChild(refreshButton);
+
+        // Optimisation : filtrer uniquement au focus/click, pas en continu
+        document.querySelectorAll('.room-select-mini').forEach(select => {
+            select.addEventListener('focus', function() {
+                filterRoomOptions(this);
+            });
+            
+            select.addEventListener('click', function() {
+                filterRoomOptions(this);
+            });
+        });
+
+        // Filtrage initial des salles visibles uniquement
+        setTimeout(() => refreshVisibleRoomFilters(), 500);
+
+        // Nettoyer le cache périodiquement
+        setInterval(() => {
+            const now = Date.now();
+            for (const [key, value] of occupiedRoomsCache.entries()) {
+                if (now - value.timestamp > CACHE_TTL * 2) {
+                    occupiedRoomsCache.delete(key);
+                }
+            }
+        }, 10000); // Nettoyage toutes les 10 secondes
+
+        const addModal = document.getElementById('add-tp-modal');
+        const reportModal = document.getElementById('report-tp-modal');
+        const duplicateModal = document.getElementById('duplicate-course-modal');
+        const addForm = document.getElementById('add-tp-form');
+        const reportForm = document.getElementById('report-tp-form');
+        const duplicateForm = document.getElementById('duplicate-course-form');
+        const reportDaySelect = reportForm.querySelector('#report-day');
+
+        // Gère l'ouverture du modal d'ajout
+        function openAddTpModal(day, time = '', prof = '', courseId = '', initialMode = 'add') {
+            addForm.reset();
+            addForm.querySelector('#tp-day').value = day;
+            
+            // Déterminer le mode réel basé sur le courseId
+            let mode = initialMode;
+            if (courseId && courseId.trim()) { // Si un courseId est fourni, c'est toujours une opération d'édition
+                mode = 'edit';
+            }
+            
+            // Gérer le champ professeur de manière intelligente
+            const profSelect = addForm.querySelector('#tp-prof');
+            if (mode === 'edit' && prof) {
+                // En mode édition, essayer de sélectionner le professeur du cours
+                // D'abord, essayer de trouver une correspondance exacte
+                let found = false;
+                for (let option of profSelect.options) {
+                    if (option.value === prof) {
+                        option.selected = true;
+                        found = true;
+                        break;
+                    }
+                }
+                
+                // Si pas de correspondance exacte, ajouter le professeur comme nouvelle option
+                if (!found && prof.trim()) {
+                    const newOption = document.createElement('option');
+                    newOption.value = prof;
+                    newOption.textContent = prof;
+                    newOption.selected = true;
+                    profSelect.appendChild(newOption);
+                }
+            } else if (prof) {
+                // En mode ajout, essayer de sélectionner le professeur
+                profSelect.value = prof;
+            }
+            
+            // Convertir le créneau de la grille (ex: "8h-9h") en format attendu (ex: "8h-9h")
+            addForm.querySelector('#tp-time').value = time;
+            addForm.querySelector('#tp-course-id').value = courseId;
+            addForm.querySelector('#tp-mode').value = mode; // Définir le mode dans le champ caché
+            
+            // Mettre à jour le titre et le bouton selon le mode
+            const modalTitle = document.getElementById('tp-modal-title');
+            const submitBtn = document.getElementById('tp-submit-btn');
+            
+            if (mode === 'edit') {
+                modalTitle.textContent = 'Ajouter un TP au cours';
+                submitBtn.textContent = 'Modifier le TP';
+                // Pré-remplir le nom du TP avec une suggestion
+                addForm.querySelector('#tp-name').placeholder = 'Ex: TP1, TP2, TP3...';
+            } else {
+                modalTitle.textContent = 'Ajouter un TP';
+                submitBtn.textContent = 'Ajouter le TP';
+                addForm.querySelector('#tp-name').placeholder = 'Nom du TP';
+            }
+            
+            addModal.style.display = 'block';
+        }
+
+        // Gérer les boutons d'ajout dans la grille (cellules vides)
+        document.querySelectorAll('.add-course-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const day = e.currentTarget.dataset.day;
+                const time = e.currentTarget.dataset.time;
+                openAddTpModal(day, time);
+            });
+        });
+
+        // Gérer les boutons d'ajout TP sur les cours existants
+        document.querySelectorAll('.btn-add-tp-course').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const day = e.currentTarget.dataset.day;
+                const prof = e.currentTarget.dataset.prof;
+                const time = e.currentTarget.dataset.time;
+                const courseId = e.currentTarget.dataset.courseId; // Get courseId from data-course-id
+                openAddTpModal(day, time, prof, courseId, 'edit');
+            });
+        });
+
+        // Gérer les boutons de report
+        document.querySelectorAll('.btn-report-course').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const courseId = e.currentTarget.dataset.courseId;
+                const workingDays = JSON.parse(e.currentTarget.dataset.workingDays || '[]');
+                
+                // Vider les anciennes options
+                reportDaySelect.innerHTML = '';
+                
+                // Remplir avec les jours de travail du prof
+                if (workingDays.length > 0) {
+                    workingDays.forEach(day => {
+                        const option = document.createElement('option');
+                        option.value = day;
+                        option.textContent = day;
+                        reportDaySelect.appendChild(option);
+                    });
+                } else {
+                    // Fallback si aucun jour n'est trouvé
+                    ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'].forEach(day => {
+                        const option = document.createElement('option');
+                        option.value = day;
+                        option.textContent = day;
+                        reportDaySelect.appendChild(option);
+                    });
+                }
+
+                reportForm.querySelector('#report-course-id').value = courseId;
+                reportModal.style.display = 'block';
+            });
+        });
+
+        // Gérer les boutons de duplication
+        document.querySelectorAll('.btn-duplicate-course').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const day = e.currentTarget.dataset.day;
+                const prof = e.currentTarget.dataset.prof;
+                const time = e.currentTarget.dataset.time;
+                const courseType = e.currentTarget.dataset.courseType;
+                
+                duplicateForm.querySelector('#duplicate-prof').value = prof;
+                duplicateForm.querySelector('#duplicate-course-type').value = courseType;
+                duplicateForm.querySelector('#duplicate-time').value = time;
+                
+                // Décocher tous les jours sauf le jour actuel
+                duplicateForm.querySelectorAll('input[name="days"]').forEach(checkbox => {
+                    checkbox.checked = checkbox.value !== day;
+                });
+                
+                duplicateModal.style.display = 'block';
+            });
+        });
+
+        // Gérer les boutons de suppression
+        document.querySelectorAll('.btn-delete-course').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const courseId = e.currentTarget.dataset.courseId;
+                if (confirm('Êtes-vous sûr de vouloir supprimer ce TP ?')) {
+                    deleteCourse(courseId);
+                }
+            });
+        });
+
+        // Gérer l'ouverture du modal de report
+        document.querySelectorAll('.btn-report-tp').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const courseId = e.currentTarget.dataset.courseId;
+                const workingDays = JSON.parse(e.currentTarget.dataset.workingDays || '[]');
+                
+                // Vider les anciennes options
+                reportDaySelect.innerHTML = '';
+                
+                // Remplir avec les jours de travail du prof
+                if (workingDays.length > 0) {
+                    workingDays.forEach(day => {
+                        const option = document.createElement('option');
+                        option.value = day;
+                        option.textContent = day;
+                        reportDaySelect.appendChild(option);
+                    });
+                } else {
+                    // Fallback si aucun jour n'est trouvé
+                    const option = document.createElement('option');
+                    option.textContent = 'Aucun jour de travail défini';
+                    option.disabled = true;
+                    reportDaySelect.appendChild(option);
+                }
+
+                reportForm.querySelector('#report-course-id').value = courseId;
+                reportModal.style.display = 'block';
+            });
+        });
+
+        // Gérer la soumission du formulaire de report
+        reportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(reportForm);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/api/courses/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('TP reporté avec succès !');
+                    location.reload();
+                } else {
+                    alert('Erreur : ' + result.error);
+                }
+            } catch (error) {
+                alert('Erreur réseau.');
+            }
+        });
+
+        // Fonction pour supprimer un cours
+        async function deleteCourse(courseId) {
+            try {
+                const response = await fetch('/api/courses/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course_id: courseId })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('TP supprimé avec succès !');
+                    location.reload();
+                } else {
+                    alert('Erreur : ' + result.error);
+                }
+            } catch (error) {
+                alert('Erreur réseau.');
+            }
+        }
+
+        // Gérer la soumission du formulaire de duplication
+        duplicateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(duplicateForm);
+            
+            // Récupérer les jours sélectionnés
+            const selectedDays = Array.from(formData.getAll('days'));
+            const selectedWeeks = Array.from(formData.getAll('weeks'));
+            
+            if (selectedDays.length === 0) {
+                alert('Veuillez sélectionner au moins un jour.');
+                return;
+            }
+            
+            if (selectedWeeks.length === 0) {
+                alert('Veuillez sélectionner au moins une semaine.');
+                return;
+            }
+
+            const data = {
+                professor: formData.get('professor'),
+                course_type: formData.get('course_type'),
+                raw_time_slot: formData.get('raw_time_slot'),
+                days: selectedDays,
+                weeks: selectedWeeks
+            };
+
+            try {
+                const response = await fetch('/api/courses/duplicate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(`Cours dupliqué avec succès vers ${result.created_count} créneaux !`);
+                    location.reload();
+                } else {
+                    alert('Erreur : ' + result.error);
+                }
+            } catch (error) {
+                alert('Erreur réseau.');
+            }
+        });
+
+        // Fonction pour charger les noms de TP sauvegardés
+        async function loadSavedTpNames() {
+            try {
+                console.log('Chargement des noms de TP depuis le serveur...');
+                
+                const response = await fetch('/api/courses/get_tp_names', {
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success && result.tp_names) {
+                    console.log(`Chargement de ${Object.keys(result.tp_names).length} noms de TP`);
+                    
+                    // Nettoyer d'abord tous les TPs affichés
+                    document.querySelectorAll('.tp-name').forEach(tpElement => {
+                        tpElement.remove();
+                    });
+                    document.querySelectorAll('.has-tp').forEach(courseElement => {
+                        courseElement.classList.remove('has-tp');
+                    });
+                    
+                    // Appliquer les noms de TP sauvegardés
+                    Object.entries(result.tp_names).forEach(([courseId, tpName]) => {
+                        const courseElement = document.querySelector(`[data-course-id="${courseId}"]`);
+                        if (courseElement) {
+                            const courseTypeElement = courseElement.querySelector('.course-type');
+                            if (courseTypeElement) {
+                                // Récupérer le nom original du cours (sans les TPs existants)
+                                let originalText = courseTypeElement.textContent;
+                                
+                                // Supprimer tous les TPs existants
+                                originalText = originalText.replace(/\s*<span class="tp-name"[^>]*>.*?<\/span>/g, '');
+                                originalText = originalText.replace(/\s*\(TP\)/g, '');
+                                
+                                // Ajouter le nom du TP sauvegardé en rouge avec bouton de suppression
+                                courseTypeElement.innerHTML = `${originalText} <span class="tp-name">${tpName} <button class="btn-delete-tp" onclick="deleteTpName('${courseId}')" title="Supprimer ce TP">🗑️</button></span>`;
+                                
+                                // Ajouter une classe pour indiquer qu'il y a un TP
+                                courseElement.classList.add('has-tp');
+                            }
+                        }
+                    });
+                    
+                    console.log('Noms de TP chargés et appliqués avec succès');
+                } else {
+                    console.log('Aucun nom de TP à charger ou erreur:', result.error);
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des noms de TP:', error);
+            }
+        }
+
+        // Fonction pour recharger les noms de TP depuis le serveur
+        async function reloadTpNamesFromServer() {
+            try {
+                console.log('Rechargement des noms de TP depuis le serveur...');
+                await loadSavedTpNames();
+                console.log('Rechargement terminé');
+            } catch (error) {
+                console.error('Erreur lors du rechargement:', error);
+            }
+        }
+
+        // Fonction pour supprimer un nom de TP
+        async function deleteTpName(courseId) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce TP ?')) {
+                try {
+                    console.log(`Suppression du TP pour le cours ${courseId}`);
+                    
+                    const response = await fetch('/api/courses/delete_tp_name', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        },
+                        body: JSON.stringify({ course_id: courseId })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        console.log(`TP supprimé avec succès pour le cours ${courseId}`);
+                        
+                        // Supprimer visuellement le TP
+                        const courseElement = document.querySelector(`[data-course-id="${courseId}"]`);
+                        if (courseElement) {
+                            const courseTypeElement = courseElement.querySelector('.course-type');
+                            if (courseTypeElement) {
+                                // Récupérer le nom original du cours (sans les TPs existants)
+                                let originalText = courseTypeElement.textContent;
+                                
+                                // Supprimer tous les TPs existants
+                                originalText = originalText.replace(/\s*<span class="tp-name"[^>]*>.*?<\/span>/g, '');
+                                originalText = originalText.replace(/\s*\(TP\)/g, '');
+                                
+                                // Remettre le texte original
+                                courseTypeElement.innerHTML = originalText;
+                                
+                                // Retirer la classe has-tp
+                                courseElement.classList.remove('has-tp');
+                            }
+                        }
+                        
+                        // Recharger les données depuis le serveur pour s'assurer de la synchronisation
+                        await reloadTpNamesFromServer();
+                        
+                        alert('TP supprimé avec succès !');
+                    } else {
+                        console.error('Erreur lors de la suppression:', result.error);
+                        alert('Erreur lors de la suppression : ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Erreur réseau lors de la suppression:', error);
+                    alert('Erreur réseau lors de la suppression.');
+                }
+            }
+        }
+
+        // Rendre la fonction deleteTpName globale pour l'onclick
+        window.deleteTpName = deleteTpName;
+
+        // Fermeture des modals
+        [addModal, reportModal, duplicateModal].forEach(modal => {
+            if(modal) {
+                modal.querySelector('.close-btn').onclick = () => { modal.style.display = 'none'; };
+            }
+        });
+        window.onclick = (event) => {
+            if (event.target == addModal) addModal.style.display = 'none';
+            if (event.target == reportModal) reportModal.style.display = 'none';
+            if (event.target == duplicateModal) duplicateModal.style.display = 'none';
+        };
+
+        addForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(addForm);
+            const data = Object.fromEntries(formData.entries());
+            const mode = data.mode;
+
+            if (mode === 'edit') {
+                // Mode édition : modifier l'affichage du cours existant
+                const courseId = data.course_id;
+                const courseElement = document.querySelector(`[data-course-id="${courseId}"]`);
+                
+                if (courseElement) {
+                    // Modifier l'affichage du cours existant
+                    const courseTypeElement = courseElement.querySelector('.course-type');
+                    if (courseTypeElement) {
+                        // Récupérer le nom original du cours (sans les TPs existants)
+                        let originalText = courseTypeElement.textContent;
+                        
+                        // Supprimer tous les TPs existants
+                        originalText = originalText.replace(/\s*<span class="tp-name"[^>]*>.*?<\/span>/g, '');
+                        originalText = originalText.replace(/\s*\(TP\)/g, '');
+                        
+                        // Ajouter le nouveau nom du TP en rouge avec bouton de suppression
+                        const tpName = data.course_type;
+                        courseTypeElement.innerHTML = `${originalText} <span class="tp-name">${tpName} <button class="btn-delete-tp" onclick="deleteTpName('${courseId}')" title="Supprimer ce TP">🗑️</button></span>`;
+                        
+                        // Ajouter une classe pour indiquer qu'il y a un TP
+                        courseElement.classList.add('has-tp');
+                    }
+                    
+                    // Sauvegarder le nom du TP via l'API
+                    try {
+                        const saveResponse = await fetch('/api/courses/update_tp_name', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                course_id: courseId,
+                                tp_name: data.course_type
+                            })
+                        });
+                        
+                        const saveResult = await saveResponse.json();
+                        if (!saveResult.success) {
+                            console.error('Erreur lors de la sauvegarde:', saveResult.error);
+                        }
+                    } catch (error) {
+                        console.error('Erreur réseau lors de la sauvegarde:', error);
+                    }
+                    
+                    // Fermer le modal
+                    addModal.style.display = 'none';
+                    
+                    // Afficher une notification de succès
+                    alert('TP modifié avec succès !');
+                } else {
+                    alert('Erreur : Cours non trouvé');
+                }
+            } else {
+                // Mode ajout : créer un nouveau TP (comportement original)
+                try {
+                    const response = await fetch('/api/courses/add_custom', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('TP ajouté avec succès !');
+                        location.reload(); // On recharge pour voir le nouveau TP
+                    } else {
+                        alert('Erreur : ' + result.error);
+                    }
+                } catch (error) {
+                    alert('Erreur réseau.');
+                }
+            }
+        });
+    });
+    function changeWeekPlanningV2(selectedOption) {
+        var select = document.getElementById('week-select');
+        var selectedText = select.options[select.selectedIndex].text;
+        var weekMatch = selectedText.match(/Semaine \d+ [AB]/);
+        if (weekMatch) {
+            var weekName = encodeURIComponent(weekMatch[0]);
+            window.location.href = '/planning_v2/' + weekName;
+        }
+    }
+    </script>
+</body>
+</html> 

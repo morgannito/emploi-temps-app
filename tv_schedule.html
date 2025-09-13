@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📺 TV Schedule - {{ current_week }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+            flex-shrink: 0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header-info {
+            font-size: 1.5rem;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .current-time {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 10px;
+            color: #ffd700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            padding: 40px;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            text-align: center;
+            color: #ffd700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .course-item {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 20px 25px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideIn 0.6s ease-out;
+        }
+
+        .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .course-time {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .course-room {
+            font-size: 1.1rem;
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .course-professor {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: white;
+        }
+
+        .course-subject {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            color: #e0e0e0;
+        }
+
+        .empty-section {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+        }
+
+        .empty-section .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-section .message {
+            font-size: 1.2rem;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% { 
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        .current-courses .course-item {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid rgba(76, 175, 80, 0.6);
+            animation: pulse 3s infinite;
+        }
+
+        /* Auto-refresh indicator */
+        .refresh-indicator {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            width: 16px;
+            height: 16px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            z-index: 1000;
+        }
+
+        /* Clock animation */
+        .clock {
+            display: inline-block;
+            animation: tick 1s infinite;
+        }
+
+        @keyframes tick {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+
+        /* Responsive pour écrans plus petits */
+        @media (max-width: 1200px) {
+            .content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .course-time {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+    <meta http-equiv="refresh" content="60">
+</head>
+<body>
+    <div class="refresh-indicator"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>📺 Planning en Direct</h1>
+            <div class="header-info">{{ current_day }} - {{ current_week }}</div>
+            <div class="current-time">
+                <span class="clock">🕐</span> {{ current_time }}
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="section current-courses">
+                <h2>🔴 EN COURS MAINTENANT</h2>
+                {% if current_courses %}
+                    {% for course in current_courses %}
+                    <div class="course-item">
+                        <div class="course-header">
+                            <div class="course-time">{{ course.start_time }} - {{ course.end_time }}</div>
+                            <div class="course-room">{{ course.room_name if course.room_name else course.assigned_room }}</div>
+                        </div>
+                        <div class="course-professor">{{ course.professor }}</div>
+                        <div class="course-subject">{{ course.subject or course.course_type }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-section">
+                        <div class="icon">😴</div>
+                        <div class="message">Aucun cours en ce moment</div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section upcoming-courses">
+                <h2>⏭️ PROCHAINS COURS</h2>
+                {% if upcoming_courses %}
+                    {% for course in upcoming_courses %}
+                    <div class="course-item">
+                        <div class="course-header">
+                            <div class="course-time">{{ course.start_time }} - {{ course.end_time }}</div>
+                            <div class="course-room">{{ course.room_name if course.room_name else course.assigned_room }}</div>
+                        </div>
+                        <div class="course-professor">{{ course.professor }}</div>
+                        <div class="course-subject">{{ course.subject or course.course_type }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-section">
+                        <div class="icon">🏁</div>
+                        <div class="message">Aucun cours à venir aujourd'hui</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mise à jour de l'heure en temps réel
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            const timeElement = document.querySelector('.current-time');
+            if (timeElement) {
+                timeElement.innerHTML = `<span class="clock">🕐</span> ${timeString}`;
+            }
+        }
+
+        // Mettre à jour l'heure toutes les secondes
+        setInterval(updateTime, 1000);
+
+        // Animation des cours en cours
+        const currentCourses = document.querySelectorAll('.current-courses .course-item');
+        currentCourses.forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.2}s`;
+        });
+
+        // Animation des prochains cours
+        const upcomingCourses = document.querySelectorAll('.upcoming-courses .course-item');
+        upcomingCourses.forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.1}s`;
+        });
+
+        // Animation de transition pour les nouvelles données
+        const sections = document.querySelectorAll('.section');
+        sections.forEach((section, index) => {
+            section.style.animationDelay = `${index * 0.3}s`;
+            section.style.animation = 'slideIn 0.8s ease-out forwards';
+        });
+
+        // Fonction pour faire défiler automatiquement si trop de contenu
+        function autoScroll() {
+            const upcomingSection = document.querySelector('.upcoming-courses');
+            const coursesContainer = upcomingSection.querySelector('div');
+            
+            if (coursesContainer && coursesContainer.scrollHeight > coursesContainer.clientHeight) {
+                let scrollPosition = 0;
+                const maxScroll = coursesContainer.scrollHeight - coursesContainer.clientHeight;
+                
+                setInterval(() => {
+                    scrollPosition += 2;
+                    if (scrollPosition >= maxScroll) {
+                        scrollPosition = 0;
+                    }
+                    coursesContainer.scrollTo({
+                        top: scrollPosition,
+                        behavior: 'smooth'
+                    });
+                }, 100);
+            }
+        }
+
+        // Démarrer l'auto-scroll après 3 secondes
+        setTimeout(autoScroll, 3000);
+    </script>
+</body>
+</html>

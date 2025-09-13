@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📅 {{ period_label }} - {{ current_day }} {{ current_week }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: {% if period == 'morning' %}linear-gradient(135deg, #FFD700 0%, #FFA500 100%){% else %}linear-gradient(135deg, #FF6B35 0%, #F7931E 100%){% endif %};
+            color: #1d1d1f;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            color: #1d1d1f;
+            padding: 25px 40px;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border-bottom: 3px solid rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            background: {% if period == 'morning' %}linear-gradient(135deg, #FFD700, #FFA500){% else %}linear-gradient(135deg, #FF6B35, #F7931E){% endif %};
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-info {
+            font-size: 1.4rem;
+            opacity: 0.8;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .time-info {
+            font-size: 1.1rem;
+            opacity: 0.7;
+            font-weight: 500;
+        }
+
+        .current-time {
+            position: absolute;
+            top: 25px;
+            right: 40px;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: {% if period == 'morning' %}#FFA500{% else %}#FF6B35{% endif %};
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .schedule-container {
+            flex: 1;
+            padding: 25px;
+            overflow: auto;
+        }
+
+        .time-slots-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .time-slot-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            animation: slideIn 0.6s ease-out;
+            margin-bottom: 20px;
+        }
+
+        .time-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid {% if period == 'morning' %}rgba(255, 215, 0, 0.3){% else %}rgba(255, 107, 53, 0.3){% endif %};
+        }
+
+        .course-count {
+            background: {% if period == 'morning' %}linear-gradient(135deg, #FFD700, #FFA500){% else %}linear-gradient(135deg, #FF6B35, #F7931E){% endif %};
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.8rem;
+            font-weight: 800;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .courses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+
+        .time-label {
+            background: {% if period == 'morning' %}linear-gradient(135deg, #FFD700, #FFA500){% else %}linear-gradient(135deg, #FF6B35, #F7931E){% endif %};
+            color: white;
+            padding: 20px 15px;
+            border-radius: 20px;
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .time-label .start-time {
+            font-size: 3rem;
+            line-height: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .time-label .end-time {
+            font-size: 1.8rem;
+            opacity: 0.9;
+            font-weight: 600;
+        }
+
+        .courses-slot {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 50px;
+        }
+
+        .course-item {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 20px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            animation: courseSlideIn 0.8s ease-out;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .course-professor {
+            font-size: 1.6rem;
+            opacity: 1;
+            margin-bottom: 8px;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .course-subject {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            background: rgba(0,0,0,0.15);
+            padding: 8px 12px;
+            border-radius: 12px;
+            display: inline-block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .course-room {
+            font-size: 1.0rem;
+            opacity: 0.85;
+            background: rgba(0,0,0,0.2);
+            padding: 6px 10px;
+            border-radius: 10px;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        .empty-slot {
+            background: rgba(0,0,0,0.05);
+            border: 2px dashed rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            font-size: 0.8rem;
+        }
+
+        .stats {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 15px 25px;
+            border-radius: 20px;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            font-size: 1rem;
+            font-weight: 700;
+            color: {% if period == 'morning' %}#FFA500{% else %}#FF6B35{% endif %};
+        }
+
+        .period-indicator {
+            position: fixed;
+            top: 25px;
+            left: 25px;
+            background: {% if period == 'morning' %}linear-gradient(135deg, #FFD700, #FFA500){% else %}linear-gradient(135deg, #FF6B35, #F7931E){% endif %};
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes courseSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Auto-refresh indicator */
+        .refresh-indicator {
+            position: fixed;
+            top: 90px;
+            right: 25px;
+            width: 14px;
+            height: 14px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1; 
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+        }
+
+        /* Clock animation */
+        .clock {
+            display: inline-block;
+            animation: tick 1s infinite;
+        }
+
+        @keyframes tick {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.8; }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .courses-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 12px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .current-time {
+                font-size: 1.4rem;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .courses-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .time-label {
+                padding: 8px 6px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+    <meta http-equiv="refresh" content="300">
+</head>
+<body>
+    <div class="period-indicator">
+        {% if period == 'morning' %}🌅 {{ period_label }}{% else %}🌅 {{ period_label }}{% endif %}
+    </div>
+    
+    <div class="refresh-indicator"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="current-time">
+                <span class="clock">🕐</span> {{ current_time }}
+            </div>
+            <h1>
+                {% if period == 'morning' %}🌅 {{ period_label }}{% else %}🌆 {{ period_label }}{% endif %}
+            </h1>
+            <div class="header-info">{{ current_day }} - {{ current_week }}</div>
+            <div class="time-info">{{ time_range }}</div>
+        </div>
+
+        <div class="schedule-container">
+            {% if time_slots_data %}
+            <div class="time-slots-grid">
+                {% for time_slot in time_slots %}
+                <div class="time-slot-card">
+                    <div class="time-header">
+                        <div class="time-label">
+                            <div class="start-time">{{ time_slot.start_time }}</div>
+                            <div class="end-time">{{ time_slot.end_time }}</div>
+                        </div>
+                        <div class="course-count">{{ time_slots_data[time_slot.label].courses|length }} cours</div>
+                    </div>
+
+                    <div class="courses-grid">
+                        {% for course in time_slots_data[time_slot.label].courses %}
+                        <div class="course-item" style="background: {{ course.prof_color if course.prof_color else 'linear-gradient(135deg, #4CAF50, #45a049)' }};">
+                            <div class="course-professor">{{ course.professor }}</div>
+                            <div class="course-subject">{{ course.subject or course.course_type }}</div>
+                            <div class="course-room">🏢 {{ course.room_name }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="time-slot-card">
+                <div style="text-align: center; padding: 60px 20px; color: #666;">
+                    <div style="font-size: 4rem; margin-bottom: 20px; opacity: 0.3;">
+                        {% if period == 'morning' %}😴{% else %}🏁{% endif %}
+                    </div>
+                    <div style="font-size: 1.5rem; font-weight: 600;">
+                        {% if period == 'morning' %}Aucun cours ce matin{% else %}Aucun cours cet après-midi{% endif %}
+                    </div>
+                    <div style="font-size: 1rem; opacity: 0.7; margin-top: 10px;">
+                        {{ current_day }} - {{ time_range }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="stats">
+            {% if period == 'morning' %}🌅{% else %}🌆{% endif %} {{ total_courses }} cours
+        </div>
+    </div>
+
+    <script>
+        // Mise à jour de l'heure en temps réel
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            const timeElement = document.querySelector('.current-time');
+            if (timeElement) {
+                timeElement.innerHTML = `<span class="clock">🕐</span> ${timeString}`;
+            }
+        }
+
+        // Mettre à jour l'heure toutes les secondes
+        setInterval(updateTime, 1000);
+
+        // Animation des cartes au chargement
+        const cards = document.querySelectorAll('.time-slot-card');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.15}s`;
+        });
+
+        // Animation des cours
+        const courses = document.querySelectorAll('.course-item');
+        courses.forEach((course, index) => {
+            course.style.animationDelay = `${index * 0.05}s`;
+        });
+
+        // Auto-scroll si nécessaire
+        const container = document.querySelector('.schedule-container');
+        let scrollDirection = 1;
+        let scrollPosition = 0;
+        
+        function autoScroll() {
+            const maxScroll = container.scrollHeight - container.clientHeight;
+            
+            if (maxScroll > 0) {
+                scrollPosition += scrollDirection * 2;
+                
+                if (scrollPosition >= maxScroll) {
+                    scrollDirection = -1;
+                } else if (scrollPosition <= 0) {
+                    scrollDirection = 1;
+                }
+                
+                container.scrollTo({
+                    top: scrollPosition,
+                    behavior: 'smooth'
+                });
+            }
+        }
+        
+        // Démarrer l'auto-scroll après 5 secondes si nécessaire
+        setTimeout(() => {
+            const needsScroll = container.scrollHeight > container.clientHeight;
+            if (needsScroll) {
+                setInterval(autoScroll, 150);
+            }
+        }, 5000);
+
+        // Refresh automatique de la page à midi (changement de période)
+        function checkForPeriodChange() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentPeriod = "{{ period }}";
+            
+            if ((currentHour < 12 && currentPeriod === "afternoon") || 
+                (currentHour >= 12 && currentPeriod === "morning")) {
+                window.location.reload();
+            }
+        }
+        
+        // Vérifier le changement de période toutes les minutes
+        setInterval(checkForPeriodChange, 60000);
+    </script>
+</body>
+</html>

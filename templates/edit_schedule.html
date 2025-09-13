@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éditer l'Emploi du Temps - {{ prof_name }}</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .header h1 { color: #2c3e50; }
+        .header h2 { color: #34495e; }
+        .schedule-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .schedule-table th, .schedule-table td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        .schedule-table th { background-color: #f8f9fa; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-delete { background-color: #e74c3c; color: white; }
+        .btn-edit { background-color: #f39c12; color: white; margin-right: 5px; }
+        .btn-add { background-color: #2ecc71; color: white; margin-bottom: 20px; }
+        .btn-save { background-color: #3498db; color: white; margin-top: 20px; font-size: 1.2em; padding: 12px 25px; }
+        .nav-back { display: inline-block; margin-bottom: 20px; padding: 10px 20px; background-color: #6c757d; color: white; border-radius: 5px; text-decoration: none; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 30px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 8px; }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        
+        /* Styles pour les créneaux horaires */
+        .time-section { background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .time-section h3 { margin: 0 0 15px 0; color: #2c3e50; font-size: 16px; }
+        .time-options { display: flex; flex-direction: column; gap: 8px; }
+        .time-mode { margin-bottom: 15px; }
+        .time-mode input[type="radio"] { margin-right: 8px; }
+        .time-mode label { margin-bottom: 0; display: inline; }
+        
+        .preset-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+        .preset-slot { 
+            background: #fff; 
+            border: 2px solid #e9ecef; 
+            border-radius: 6px; 
+            padding: 8px 12px; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        .preset-slot:hover { border-color: #3498db; background: #f1f9ff; }
+        .preset-slot.selected { border-color: #3498db; background: #3498db; color: white; }
+        
+        .custom-time { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: end; }
+        .custom-time input { margin-bottom: 0; }
+        .time-separator { font-weight: bold; color: #666; text-align: center; padding: 10px 0; }
+        
+        .time-preview { 
+            background: #e8f5e8; 
+            border: 1px solid #4caf50; 
+            border-radius: 6px; 
+            padding: 10px; 
+            text-align: center; 
+            font-weight: 500; 
+            color: #2e7d32;
+            margin-top: 10px;
+        }
+        
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('list_professors_overview_minimal') }}" class="nav-back">← Retour à la vue d'ensemble</a>
+        <div class="header">
+            <h1>Édition de l'Emploi du Temps</h1>
+            <h2>Professeur : {{ prof_name }}</h2>
+        </div>
+
+        <button id="add-course-btn" class="btn btn-add">➕ Ajouter un cours</button>
+        
+        <table class="schedule-table" id="schedule-table">
+            <thead>
+                <tr>
+                    <th>Jour</th>
+                    <th>Horaire</th>
+                    <th>Matière</th>
+                    <th>Élèves</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for course in courses %}
+                <tr class="course-row">
+                    <td data-field="day">{{ course.day }}</td>
+                    <td data-field="raw_time_slot">{{ course.raw_time_slot }}</td>
+                    <td data-field="course_type">{{ course.course_type }}</td>
+                    <td data-field="nb_students">{{ course.nb_students }}</td>
+                    <td>
+                        <button class="btn btn-edit">Modifier</button>
+                        <button class="btn btn-delete">Supprimer</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button id="save-btn" class="btn btn-save">💾 Sauvegarder les modifications</button>
+    </div>
+
+    <!-- Modal pour ajouter/éditer un cours -->
+    <div id="course-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2 id="modal-title">Ajouter un nouveau cours</h2>
+            <form id="course-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="day">Jour de la semaine</label>
+                        <select id="day" name="day" required>
+                            <option value="">-- Sélectionnez un jour --</option>
+                            <option value="Lundi">Lundi</option>
+                            <option value="Mardi">Mardi</option>
+                            <option value="Mercredi">Mercredi</option>
+                            <option value="Jeudi">Jeudi</option>
+                            <option value="Vendredi">Vendredi</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="course_type">Matière / Type de cours</label>
+                        <input type="text" id="course_type" name="course_type" placeholder="Ex: Mathématiques, Cours magistral...">
+                    </div>
+                </div>
+
+                <div class="time-section">
+                    <h3>⏰ Créneaux horaires</h3>
+                    
+                    <div class="time-mode">
+                        <input type="radio" id="preset-mode" name="time_mode" value="preset" checked>
+                        <label for="preset-mode">Créneaux prédéfinis</label>
+                    </div>
+                    
+                    <div id="preset-section">
+                        <div class="preset-slots" id="preset-slots">
+                            <!-- Matinée -->
+                            <div class="preset-slot" data-slot="8h-9h">8h-9h</div>
+                            <div class="preset-slot" data-slot="9h-10h">9h-10h</div>
+                            <div class="preset-slot" data-slot="10h15-11h15">10h15-11h15</div>
+                            <div class="preset-slot" data-slot="11h15-12h15">11h15-12h15</div>
+                            
+                            <!-- Après-midi -->
+                            <div class="preset-slot" data-slot="13h30-14h30">13h30-14h30</div>
+                            <div class="preset-slot" data-slot="14h30-15h30">14h30-15h30</div>
+                            <div class="preset-slot" data-slot="15h45-16h45">15h45-16h45</div>
+                            <div class="preset-slot" data-slot="16h45-17h45">16h45-17h45</div>
+                            
+                            <!-- Créneaux longs -->
+                            <div class="preset-slot" data-slot="8h-12h">8h-12h (Matinée)</div>
+                            <div class="preset-slot" data-slot="13h-17h">13h-17h (Après-midi)</div>
+                            <div class="preset-slot" data-slot="8h-10h">8h-10h</div>
+                            <div class="preset-slot" data-slot="10h-12h">10h-12h</div>
+                            <div class="preset-slot" data-slot="14h-16h">14h-16h</div>
+                            <div class="preset-slot" data-slot="16h-18h">16h-18h</div>
+                        </div>
+                    </div>
+                    
+                    <div class="time-mode" style="margin-top: 15px;">
+                        <input type="radio" id="custom-mode" name="time_mode" value="custom">
+                        <label for="custom-mode">Créneau personnalisé</label>
+                    </div>
+                    
+                    <div id="custom-section" class="hidden">
+                        <div class="custom-time">
+                            <div>
+                                <label for="start_time">Heure de début</label>
+                                <input type="time" id="start_time" name="start_time">
+                            </div>
+                            <div class="time-separator">à</div>
+                            <div>
+                                <label for="end_time">Heure de fin</label>
+                                <input type="time" id="end_time" name="end_time">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="time-preview" class="time-preview hidden">
+                        Créneau sélectionné : <span id="preview-text"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="nb_students">Nombre d'élèves / Classe</label>
+                    <input type="text" id="nb_students" name="nb_students" placeholder="Ex: 30, Terminale S1, BTS SIO...">
+                </div>
+
+                <!-- Champ caché pour stocker le créneau final -->
+                <input type="hidden" id="raw_time_slot" name="raw_time_slot">
+
+                <button type="submit" class="btn btn-save" id="modal-submit-btn">Ajouter</button>
+            </form>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('course-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalSubmitBtn = document.getElementById('modal-submit-btn');
+    const addBtn = document.getElementById('add-course-btn');
+    const closeBtn = document.querySelector('.close-btn');
+    const form = document.getElementById('course-form');
+    const saveBtn = document.getElementById('save-btn');
+    const tableBody = document.getElementById('schedule-table').querySelector('tbody');
+
+    // Éléments pour la gestion des créneaux
+    const presetMode = document.getElementById('preset-mode');
+    const customMode = document.getElementById('custom-mode');
+    const presetSection = document.getElementById('preset-section');
+    const customSection = document.getElementById('custom-section');
+    const presetSlots = document.querySelectorAll('.preset-slot');
+    const startTimeInput = document.getElementById('start_time');
+    const endTimeInput = document.getElementById('end_time');
+    const timePreview = document.getElementById('time-preview');
+    const previewText = document.getElementById('preview-text');
+    const rawTimeSlotInput = document.getElementById('raw_time_slot');
+
+    let currentRowBeingEdited = null;
+
+    // Gestion du basculement entre créneaux prédéfinis et personnalisés
+    presetMode.addEventListener('change', function() {
+        if (this.checked) {
+            presetSection.classList.remove('hidden');
+            customSection.classList.add('hidden');
+            updateTimePreview();
+        }
+    });
+
+    customMode.addEventListener('change', function() {
+        if (this.checked) {
+            presetSection.classList.add('hidden');
+            customSection.classList.remove('hidden');
+            clearPresetSelection();
+            updateTimePreview();
+        }
+    });
+
+    // Gestion de la sélection des créneaux prédéfinis
+    presetSlots.forEach(slot => {
+        slot.addEventListener('click', function() {
+            // Désélectionner tous les autres créneaux
+            presetSlots.forEach(s => s.classList.remove('selected'));
+            // Sélectionner le créneau cliqué
+            this.classList.add('selected');
+            updateTimePreview();
+        });
+    });
+
+    // Gestion des créneaux personnalisés
+    startTimeInput.addEventListener('change', updateTimePreview);
+    endTimeInput.addEventListener('change', updateTimePreview);
+
+    function clearPresetSelection() {
+        presetSlots.forEach(s => s.classList.remove('selected'));
+    }
+
+    function updateTimePreview() {
+        let timeSlot = '';
+        
+        if (presetMode.checked) {
+            const selectedSlot = document.querySelector('.preset-slot.selected');
+            if (selectedSlot) {
+                timeSlot = selectedSlot.dataset.slot;
+            }
+        } else if (customMode.checked) {
+            const startTime = startTimeInput.value;
+            const endTime = endTimeInput.value;
+            
+            if (startTime && endTime) {
+                // Convertir HH:MM en format HhMM
+                const formatTime = (time) => {
+                    const [hours, minutes] = time.split(':');
+                    if (minutes === '00') {
+                        return `${parseInt(hours)}h`;
+                    }
+                    return `${parseInt(hours)}h${minutes}`;
+                };
+                
+                timeSlot = `${formatTime(startTime)}-${formatTime(endTime)}`;
+            }
+        }
+        
+        if (timeSlot) {
+            previewText.textContent = timeSlot;
+            timePreview.classList.remove('hidden');
+            rawTimeSlotInput.value = timeSlot;
+        } else {
+            timePreview.classList.add('hidden');
+            rawTimeSlotInput.value = '';
+        }
+    }
+
+    // Ouvre le modal pour l'ajout
+    addBtn.onclick = () => {
+        currentRowBeingEdited = null;
+        form.reset();
+        
+        // Réinitialiser l'interface des créneaux
+        presetMode.checked = true;
+        customMode.checked = false;
+        presetSection.classList.remove('hidden');
+        customSection.classList.add('hidden');
+        clearPresetSelection();
+        timePreview.classList.add('hidden');
+        
+        modalTitle.textContent = 'Ajouter un nouveau cours';
+        modalSubmitBtn.textContent = 'Ajouter';
+        modal.style.display = 'block';
+    };
+
+    // Ferme le modal
+    closeBtn.onclick = () => { modal.style.display = 'none'; };
+    window.onclick = (event) => {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    // Gère la soumission du formulaire (ajout ou édition)
+    form.onsubmit = function(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(form);
+        const day = formData.get('day');
+        const time = rawTimeSlotInput.value; // Utiliser la valeur calculée
+        const type = formData.get('course_type');
+        const students = formData.get('nb_students');
+
+        if (!time) {
+            alert('Veuillez sélectionner un créneau horaire.');
+            return;
+        }
+
+        if (currentRowBeingEdited) {
+            // Mise à jour de la ligne existante
+            currentRowBeingEdited.querySelector('[data-field="day"]').textContent = day;
+            currentRowBeingEdited.querySelector('[data-field="raw_time_slot"]').textContent = time;
+            currentRowBeingEdited.querySelector('[data-field="course_type"]').textContent = type;
+            currentRowBeingEdited.querySelector('[data-field="nb_students"]').textContent = students;
+        } else {
+            // Création d'une nouvelle ligne
+            const newRow = tableBody.insertRow();
+            newRow.className = 'course-row';
+            newRow.innerHTML = `
+                <td data-field="day">${day}</td>
+                <td data-field="raw_time_slot">${time}</td>
+                <td data-field="course_type">${type}</td>
+                <td data-field="nb_students">${students}</td>
+                <td>
+                    <button class="btn btn-edit">Modifier</button>
+                    <button class="btn btn-delete">Supprimer</button>
+                </td>
+            `;
+            // Il faut attacher les écouteurs à la nouvelle ligne
+            attachRowListeners(newRow);
+        }
+        
+        modal.style.display = 'none';
+    };
+
+    // Fonction pour ouvrir le modal en mode édition
+    function openEditModal(row) {
+        currentRowBeingEdited = row;
+        
+        // Pré-remplir les champs de base
+        form.querySelector('#day').value = row.querySelector('[data-field="day"]').textContent;
+        form.querySelector('#course_type').value = row.querySelector('[data-field="course_type"]').textContent;
+        form.querySelector('#nb_students').value = row.querySelector('[data-field="nb_students"]').textContent;
+        
+        // Gérer le créneau horaire existant
+        const existingTimeSlot = row.querySelector('[data-field="raw_time_slot"]').textContent;
+        
+        // Essayer de trouver le créneau dans les prédéfinis
+        let foundPreset = false;
+        presetSlots.forEach(slot => {
+            slot.classList.remove('selected');
+            if (slot.dataset.slot === existingTimeSlot) {
+                slot.classList.add('selected');
+                foundPreset = true;
+            }
+        });
+        
+        if (foundPreset) {
+            presetMode.checked = true;
+            customMode.checked = false;
+            presetSection.classList.remove('hidden');
+            customSection.classList.add('hidden');
+        } else {
+            // Essayer de parser le créneau pour le mode personnalisé
+            customMode.checked = true;
+            presetMode.checked = false;
+            presetSection.classList.add('hidden');
+            customSection.classList.remove('hidden');
+            
+            // Parser le format "8h-10h" ou "13h30-14h30"
+            const timeMatch = existingTimeSlot.match(/(\d{1,2})h(\d{2})?-(\d{1,2})h(\d{2})?/);
+            if (timeMatch) {
+                const startHour = timeMatch[1].padStart(2, '0');
+                const startMin = timeMatch[2] || '00';
+                const endHour = timeMatch[3].padStart(2, '0');
+                const endMin = timeMatch[4] || '00';
+                
+                startTimeInput.value = `${startHour}:${startMin}`;
+                endTimeInput.value = `${endHour}:${endMin}`;
+            }
+        }
+        
+        updateTimePreview();
+        
+        // Mettre à jour les textes du modal
+        modalTitle.textContent = 'Modifier le cours';
+        modalSubmitBtn.textContent = 'Mettre à jour';
+        modal.style.display = 'block';
+    }
+
+    // Attacher les écouteurs pour les boutons 'Modifier' et 'Supprimer'
+    function attachRowListeners(row) {
+        row.querySelector('.btn-edit').addEventListener('click', () => openEditModal(row));
+        row.querySelector('.btn-delete').addEventListener('click', () => {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce cours ?')) {
+                row.parentNode.removeChild(row);
+            }
+        });
+    }
+
+    // Attacher les écouteurs aux lignes existantes au chargement de la page
+    tableBody.querySelectorAll('.course-row').forEach(attachRowListeners);
+
+    // La logique de sauvegarde globale reste la même
+    saveBtn.onclick = async function() {
+        const courseRows = document.querySelectorAll('#schedule-table tbody .course-row');
+        const coursesPayload = [];
+
+        courseRows.forEach(row => {
+            const cells = row.querySelectorAll('td[data-field]');
+            coursesPayload.push({
+                day: cells[0].textContent,
+                course_type: cells[2].textContent,
+                nb_students: cells[3].textContent,
+                start_time: "", 
+                end_time: "",
+                duration_hours: 0,
+                assigned_room: null,
+                raw_time_slot: cells[1].textContent
+            });
+        });
+
+        const profName = "{{ prof_name }}";
+        const url = `/api/save_prof_schedule/${profName}`;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(coursesPayload)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Emploi du temps sauvegardé avec succès !');
+                window.location.reload();
+            } else {
+                alert('Erreur lors de la sauvegarde : ' + result.error);
+            }
+        } catch (error) {
+            alert('Une erreur réseau est survenue.');
+            console.error('Save error:', error);
+        }
+    };
+});
+</script>
+</body>
+</html> 

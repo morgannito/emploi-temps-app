@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des Professeurs - Administration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #6c757d;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #2c3e50;
+        }
+        .professor-list {
+            list-style: none;
+            padding: 0;
+        }
+        .professor-item {
+            background: #fff;
+            margin-bottom: 15px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .professor-item:hover {
+            transform: translateY(-5px);
+        }
+        .professor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .professor-name {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #34495e;
+        }
+        .professor-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .link-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+        .schedule-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 0.9em;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover {
+            background: #218838;
+        }
+        .copy-btn.copied {
+            background: #6c757d;
+        }
+        .view-schedule-btn {
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        .view-schedule-btn:hover {
+            background: #0056b3;
+        }
+        .week-list {
+            margin-top: 10px;
+        }
+        .week-list strong {
+            color: #495057;
+        }
+        .week-links a {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            padding: 5px 12px;
+            margin-right: 8px;
+            margin-top: 8px;
+            border-radius: 15px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+        .week-links a:hover {
+            background: #3498db;
+            color: #fff;
+        }
+        .nav-back {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .nav-back:hover {
+            background-color: #5a6268;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 5px;
+            display: none;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="nav-back">← Retour à l'attribution des salles</a>
+        <div class="header">
+            <h1>Gestion des Professeurs</h1>
+            <p>Accédez aux emplois du temps individuels ou modifiez les plannings par semaine.</p>
+        </div>
+
+        <ul class="professor-list">
+            {% for prof_name, weeks in professors.items() %}
+            <li class="professor-item">
+                <div class="professor-header">
+                    <div class="professor-name">{{ prof_name }}</div>
+                    <div class="professor-actions">
+                        <div class="link-container">
+                            <input type="text" 
+                                   id="link-{{ loop.index }}" 
+                                   class="schedule-link" 
+                                   value="{{ request.url_root }}professor/{{ prof_name|urlencode }}" 
+                                   readonly>
+                            <button class="copy-btn" onclick="copyLink('link-{{ loop.index }}', this)">
+                                📋 Copier
+                            </button>
+                        </div>
+                        <a href="/professor/{{ prof_name|urlencode }}" class="view-schedule-btn" target="_blank">
+                            👁️ Voir l'emploi du temps
+                        </a>
+                    </div>
+                </div>
+                <div class="week-list">
+                    <strong>Éditer par semaine :</strong>
+                    <div class="week-links">
+                        {% for week in weeks %}
+                        <a href="{{ url_for('edit_schedule', week_name=week, prof_name=prof_name) }}">{{ week }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </li>
+            {% else %}
+            <li>Aucun professeur trouvé.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="toast" id="toast">✅ Lien copié dans le presse-papiers!</div>
+
+    <script>
+        function copyLink(inputId, button) {
+            const input = document.getElementById(inputId);
+            
+            // Sélectionner le texte
+            input.select();
+            input.setSelectionRange(0, 99999); // Pour mobile
+            
+            // Copier le texte
+            navigator.clipboard.writeText(input.value).then(function() {
+                // Changer le texte du bouton temporairement
+                const originalText = button.innerHTML;
+                button.innerHTML = "✅ Copié!";
+                button.classList.add('copied');
+                
+                // Afficher le toast
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                
+                // Réinitialiser après 2 secondes
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('copied');
+                    toast.style.display = 'none';
+                }, 2000);
+            }).catch(function(err) {
+                // Fallback pour les anciens navigateurs
+                document.execCommand('copy');
+                const originalText = button.innerHTML;
+                button.innerHTML = "✅ Copié!";
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

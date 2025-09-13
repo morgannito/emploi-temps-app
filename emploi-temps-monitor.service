@@ -1,0 +1,25 @@
+[Unit]
+Description=Moniteur de surveillance pour l'application Emploi du Temps ISA
+After=network.target supervisor.service
+Wants=supervisor.service
+
+[Service]
+Type=simple
+User=toto
+Group=toto
+WorkingDirectory=/home/toto/app_emploie_du_temps_isa
+Environment=PATH=/home/toto/app_emploie_du_temps_isa/venv/bin
+ExecStart=/home/toto/app_emploie_du_temps_isa/venv/bin/python /home/toto/app_emploie_du_temps_isa/monitor_app.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Sécurité
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/toto/app_emploie_du_temps_isa/logs
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emploi du temps - {{ professor_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .week-selector {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .week-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .week-btn:hover {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+        
+        .week-btn.active {
+            background: #2c3e50;
+            color: white;
+            border-color: #2c3e50;
+        }
+        
+        .week-schedule {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        
+        .week-schedule.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .week-title {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+        }
+        
+        .day-section {
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .day-title {
+            font-size: 1.3em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .course-card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .course-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        
+        .time-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-right: 20px;
+            min-width: 100px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .course-info {
+            flex-grow: 1;
+        }
+        
+        .course-subject {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .course-details {
+            color: #6c757d;
+            font-size: 0.95em;
+        }
+        
+        .room-badge {
+            background: #28a745;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        
+        .room-badge.no-room {
+            background: #dc3545;
+        }
+        
+        .no-courses {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+            transition: all 0.3s;
+        }
+        
+        .print-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5);
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+            .week-selector, .print-btn {
+                display: none;
+            }
+            .week-schedule {
+                display: block !important;
+                page-break-after: always;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .course-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .time-badge {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Emploi du temps</h1>
+            <p>{{ professor_name }}</p>
+        </div>
+        
+        <div class="content">
+            {% if professor_courses %}
+            <div class="week-selector">
+                {% for week in weeks_list %}
+                    {% if week.name in professor_courses %}
+                    <button class="week-btn" onclick="showWeek('{{ week.name|replace(" ", "_")|replace("(", "")|replace(")", "") }}')">
+                        {{ week.name }}
+                    </button>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            {% for week_name, courses in professor_courses.items() %}
+            <div class="week-schedule" id="{{ week_name|replace(" ", "_")|replace("(", "")|replace(")", "") }}">
+                <h2 class="week-title">{{ week_name }}</h2>
+                
+                {% set days = {} %}
+                {% for course in courses %}
+                    {% if course.day not in days %}
+                        {% set _ = days.update({course.day: []}) %}
+                    {% endif %}
+                    {% set _ = days[course.day].append(course) %}
+                {% endfor %}
+                
+                {% for day in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] %}
+                    {% if day in days %}
+                    <div class="day-section">
+                        <h3 class="day-title">{{ day }}</h3>
+                        {% for course in days[day] %}
+                        <div class="course-card">
+                            <div class="time-badge">
+                                {{ course.start_time }} - {{ course.end_time }}
+                            </div>
+                            <div class="course-info">
+                                <div class="course-subject">{{ course.subject }}</div>
+                                <div class="course-details">
+                                    {% if course.tp_name %}
+                                    Groupe: {{ course.tp_name }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="room-badge {% if course.room == 'Non attribuée' %}no-room{% endif %}">
+                                📍 {{ course.room }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endfor %}
+            
+            {% else %}
+            <div class="no-courses">
+                <h2>Aucun cours programmé</h2>
+                <p>Vous n'avez aucun cours programmé pour le moment.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <button class="print-btn" onclick="window.print()">
+        🖨️ Imprimer
+    </button>
+    
+    <script>
+        // Afficher la première semaine par défaut
+        window.onload = function() {
+            const firstBtn = document.querySelector('.week-btn');
+            if (firstBtn) {
+                firstBtn.click();
+            }
+        };
+        
+        function showWeek(weekId) {
+            // Masquer toutes les semaines
+            const allWeeks = document.querySelectorAll('.week-schedule');
+            allWeeks.forEach(week => {
+                week.classList.remove('active');
+            });
+            
+            // Désactiver tous les boutons
+            const allBtns = document.querySelectorAll('.week-btn');
+            allBtns.forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Afficher la semaine sélectionnée
+            const selectedWeek = document.getElementById(weekId);
+            if (selectedWeek) {
+                selectedWeek.classList.add('active');
+            }
+            
+            // Activer le bouton correspondant
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

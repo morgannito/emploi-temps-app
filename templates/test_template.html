@@ -1,0 +1,10 @@
+
+<h1>Test Template</h1>
+<p>prof_id_mapping keys: {{ prof_id_mapping.keys() | length }}</p>
+<p>summary keys: {{ summary.keys() | length }}</p>
+
+{% for prof_name, prof_data in summary.items() %}
+  <p>Professor: {{ prof_name }}</p>
+  <p>ID: {{ prof_id_mapping[prof_name] if prof_id_mapping and prof_name in prof_id_mapping else 'NOT_FOUND' }}</p>
+  <hr>
+{% endfor %}

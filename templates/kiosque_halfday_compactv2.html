@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📅 {{ period_label }} - {{ current_day }} {{ current_week }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #4691A8 0%, #2E5C6B 100%);
+            color: #1d1d1f;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            color: #1d1d1f;
+            padding: 8px 20px;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, #E65F78, #C44569);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .current-time {
+            position: absolute;
+            top: 12px;
+            right: 20px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #F39C6B;
+        }
+
+        .schedule-container {
+            flex: 1;
+            padding: 10px;
+            overflow: auto;
+        }
+
+        /* VERTICAL LIST STYLE - V2 */
+        .courses-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 100%;
+        }
+
+        .course-row {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 12px 18px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid var(--prof-color, #4CAF50);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.3s ease;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .course-row:hover {
+            transform: translateX(5px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+        }
+
+        .course-time-badge {
+            background: linear-gradient(135deg, #4691A8, #5BA5C2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-align: center;
+            min-width: 100px;
+            flex-shrink: 0;
+        }
+
+        .course-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 0;
+        }
+
+        .course-professor {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #1d1d1f;
+            min-width: 120px;
+            flex-shrink: 0;
+        }
+
+        .course-subject {
+            font-size: 0.9rem;
+            color: #666;
+            background: rgba(0,0,0,0.05);
+            padding: 4px 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+
+        .course-room {
+            font-size: 0.9rem;
+            color: #2F7D8E;
+            font-weight: 700;
+            background: rgba(70, 145, 168, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .course-separator {
+            width: 2px;
+            height: 30px;
+            background: rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .stats {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #E65F78;
+        }
+
+        .period-indicator {
+            position: fixed;
+            top: 12px;
+            left: 15px;
+            background: linear-gradient(135deg, #E65F78, #C44569);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .refresh-indicator {
+            position: fixed;
+            top: 45px;
+            right: 20px;
+            width: 10px;
+            height: 10px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #666;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1400px) {
+            .course-info {
+                gap: 10px;
+            }
+            
+            .course-professor {
+                min-width: 100px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+    <meta http-equiv="refresh" content="300">
+</head>
+<body>
+    <div class="period-indicator">
+        {% if period == 'morning' %}🌅 {{ period_label }}{% else %}🌆 {{ period_label }}{% endif %}
+    </div>
+    
+    <div class="refresh-indicator"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="current-time">
+                🕐 {{ current_time }}
+            </div>
+            <h1>
+                {% if period == 'morning' %}🌅 {{ period_label }}{% else %}🌆 {{ period_label }}{% endif %}
+            </h1>
+            <div class="header-info" style="font-size: 0.9rem; opacity: 0.8;">{{ current_day }} - {{ current_week }}</div>
+        </div>
+
+        <div class="schedule-container">
+            {% if time_slots_data %}
+                <div class="courses-list">
+                    {% set all_courses = [] %}
+                    {% for time_slot in time_slots %}
+                        {% for course in time_slots_data[time_slot.label].courses %}
+                            {{ all_courses.append({
+                                'start_time': course.start_time,
+                                'end_time': course.end_time,
+                                'professor': course.professor,
+                                'subject': course.subject or course.course_type,
+                                'room_name': course.room_name,
+                                'prof_color': course.prof_color if course.prof_color else '#4CAF50'
+                            }) or "" }}
+                        {% endfor %}
+                    {% endfor %}
+                    
+                    {% for course in all_courses %}
+                    <div class="course-row" style="--prof-color: {{ course.prof_color }}; animation-delay: {{ loop.index0 * 0.05 }}s;">
+                        <div class="course-time-badge">
+                            {{ course.start_time }} - {{ course.end_time }}
+                        </div>
+                        
+                        <div class="course-info">
+                            <div class="course-professor">{{ course.professor }}</div>
+                            <div class="course-separator"></div>
+                            <div class="course-subject">{{ course.subject }}</div>
+                            <div class="course-separator"></div>
+                            <div class="course-room">🏢 {{ course.room_name }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="icon">
+                        {% if period == 'morning' %}😴{% else %}🏁{% endif %}
+                    </div>
+                    <div class="message" style="font-size: 1.5rem; font-weight: 600;">
+                        {% if period == 'morning' %}Aucun cours ce matin{% else %}Aucun cours cet après-midi{% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="stats">
+            {% if period == 'morning' %}🌅{% else %}🌆{% endif %} {{ total_courses }} cours
+        </div>
+    </div>
+
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            const timeElement = document.querySelector('.current-time');
+            if (timeElement) {
+                timeElement.innerHTML = `🕐 ${timeString}`;
+            }
+        }
+
+        setInterval(updateTime, 1000);
+
+        // Auto-scroll smooth list
+        const container = document.querySelector('.schedule-container');
+        let scrollPosition = 0;
+        let scrollDirection = 1;
+        
+        function autoScroll() {
+            const maxScroll = container.scrollHeight - container.clientHeight;
+            if (maxScroll > 0) {
+                scrollPosition += scrollDirection * 0.8;
+                if (scrollPosition >= maxScroll) scrollDirection = -1;
+                else if (scrollPosition <= 0) scrollDirection = 1;
+                
+                container.scrollTo({
+                    top: scrollPosition,
+                    behavior: 'smooth'
+                });
+            }
+        }
+        
+        setTimeout(() => {
+            if (container.scrollHeight > container.clientHeight) {
+                setInterval(autoScroll, 100);
+            }
+        }, 5000);
+
+        function checkForPeriodChange() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentPeriod = "{{ period }}";
+            
+            if ((currentHour < 12 && currentPeriod === "afternoon") || 
+                (currentHour >= 12 && currentPeriod === "morning")) {
+                window.location.reload();
+            }
+        }
+        
+        setInterval(checkForPeriodChange, 60000);
+    </script>
+</body>
+</html>

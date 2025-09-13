@@ -1,0 +1,342 @@
+/* Styles pour l'application de gestion d'emploi du temps */
+
+:root {
+    --primary-color: #0d6efd;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --light-bg: #f8f9fa;
+    --border-color: #dee2e6;
+}
+
+body {
+    background-color: var(--light-bg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Navigation */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+/* Tableaux d'emploi du temps */
+.schedule-table {
+    font-size: 0.875rem;
+    min-width: 1200px;
+}
+
+.schedule-table th {
+    background-color: #343a40;
+    color: white;
+    border-color: #495057;
+    vertical-align: middle;
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+}
+
+.schedule-table td {
+    vertical-align: top;
+    padding: 0.5rem;
+    min-height: 120px;
+    position: relative;
+}
+
+.time-slot {
+    background-color: #e9ecef;
+    font-weight: 500;
+    text-align: center;
+    vertical-align: middle !important;
+}
+
+.schedule-cell {
+    min-width: 200px;
+    background-color: white;
+    transition: all 0.2s ease;
+}
+
+.schedule-cell:hover {
+    background-color: #f8f9fa;
+    box-shadow: inset 0 0 0 2px var(--primary-color);
+}
+
+.schedule-cell.occupied {
+    background-color: #e3f2fd;
+    border-left: 4px solid var(--primary-color);
+}
+
+.schedule-cell.conflict {
+    background-color: #ffebee;
+    border-left: 4px solid var(--danger-color);
+}
+
+/* Contenu des cellules */
+.schedule-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.teacher-dropdown,
+.subject-field,
+.equipment-dropdown {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+}
+
+.teacher-dropdown:focus,
+.subject-field:focus,
+.equipment-dropdown:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.teacher-dropdown option {
+    padding: 0.25rem;
+}
+
+.equipment-dropdown {
+    max-height: 60px;
+    overflow-y: auto;
+}
+
+.equipment-dropdown option:checked {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Indicateurs visuels */
+.teacher-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--success-color);
+    margin-right: 0.25rem;
+}
+
+.equipment-indicator {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--warning-color);
+    margin-right: 0.125rem;
+}
+
+/* Onglets */
+.nav-tabs .nav-link {
+    color: #495057;
+    border: 1px solid transparent;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: #e9ecef #e9ecef var(--border-color);
+    color: var(--primary-color);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    background-color: white;
+    border-color: var(--border-color) var(--border-color) white;
+}
+
+/* Cards */
+.card {
+    border: 1px solid var(--border-color);
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: white;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+}
+
+/* Modal */
+.modal-content {
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--light-bg);
+}
+
+/* Toast notifications */
+.toast {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.toast-header {
+    background-color: white;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* États des cellules */
+.schedule-cell[data-status="occupied"] {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left: 4px solid var(--primary-color);
+}
+
+.schedule-cell[data-status="conflict"] {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    border-left: 4px solid var(--danger-color);
+}
+
+.schedule-cell[data-status="available"] {
+    background-color: white;
+}
+
+/* Animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.schedule-content {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .schedule-table {
+        font-size: 0.75rem;
+    }
+    
+    .schedule-cell {
+        min-width: 150px;
+    }
+    
+    .teacher-dropdown,
+    .subject-field,
+    .equipment-dropdown {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    
+    .schedule-table {
+        font-size: 0.7rem;
+    }
+    
+    .schedule-cell {
+        min-width: 120px;
+        padding: 0.25rem;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* Utilitaires */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.border-left-primary {
+    border-left: 4px solid var(--primary-color) !important;
+}
+
+.border-left-warning {
+    border-left: 4px solid var(--warning-color) !important;
+}
+
+.border-left-danger {
+    border-left: 4px solid var(--danger-color) !important;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+/* Drag and drop (pour future implémentation) */
+.draggable {
+    cursor: move;
+}
+
+.drop-zone {
+    border: 2px dashed var(--primary-color);
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.drop-zone.active {
+    border-color: var(--success-color);
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+/* Créneaux de continuation pour durées variables */
+.schedule-cell.continuation-slot {
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+    border-left: 4px solid #87ceeb;
+    position: relative;
+}
+
+.continuation-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-style: italic;
+    color: #6c757d;
+}
+
+.continuation-indicator::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: repeating-linear-gradient(
+        90deg,
+        #87ceeb,
+        #87ceeb 5px,
+        transparent 5px,
+        transparent 10px
+    );
+}
+
+/* Sélecteur de durée */
+.duration-dropdown {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    font-weight: 600;
+}
+
+.duration-dropdown:focus {
+    border-color: #ffca2c;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+}
+
+.duration-dropdown option {
+    font-weight: 500;
+} 

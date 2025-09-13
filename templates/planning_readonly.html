@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning - {{ week_name }}</title>
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #48bb78;
+            --danger-color: #f56565;
+            --warning-color: #ed8936;
+            --info-color: #4299e1;
+            --light-color: #f7fafc;
+            --dark-color: #2d3748;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .week-selector select {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .week-selector select:hover {
+            border-color: var(--primary-color);
+        }
+
+        .week-selector select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-view {
+            background: var(--info-color);
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(66, 153, 225, 0.3);
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: 100px repeat(5, 1fr);
+            gap: 1px;
+            background: #e2e8f0;
+            padding: 1px;
+            margin: 20px;
+        }
+
+        .time-header, .day-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .time-slot {
+            background: #f8f9fa;
+            padding: 10px;
+            text-align: center;
+            font-weight: 500;
+            color: var(--dark-color);
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .schedule-cell {
+            background: white;
+            min-height: 80px;
+            position: relative;
+            padding: 5px;
+        }
+
+        .course-in-grid {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 8px;
+            border-radius: 8px;
+            margin: 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            position: relative;
+            min-height: 70px;
+        }
+
+        .course-in-grid:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .course-in-grid.tp {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .course-in-grid.assigned {
+            border: 2px solid var(--success-color);
+        }
+
+        .prof-name {
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .course-type {
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
+
+        .course-duration {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+
+        .room-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+
+        .legend {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .legend h3 {
+            margin-bottom: 15px;
+            color: var(--dark-color);
+        }
+
+        .legend-items {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Planning des Cours</h1>
+            <p>Vue en lecture seule - {{ week_name }}</p>
+        </div>
+
+        <div class="controls">
+            <div class="week-selector">
+                <select onchange="window.location.href='/planning/' + this.value">
+                    {% for week in all_weeks %}
+                    <option value="{{ week.name }}" {% if week.name == week_name %}selected{% endif %}>
+                        {{ week.full_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="/professors" class="btn btn-view">👥 Vue Professeurs</a>
+                <a href="/student/{{ week_name }}" class="btn btn-view">📱 Vue Étudiants</a>
+                <a href="/export_week_pdf/{{ week_name }}" class="btn btn-view">📄 Exporter PDF</a>
+            </div>
+        </div>
+
+        <div class="schedule-grid">
+            <!-- En-tête avec heures -->
+            <div class="time-header">Heures</div>
+            {% for day in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] %}
+            <div class="day-header">{{ day }}</div>
+            {% endfor %}
+            
+            <!-- Créneaux horaires -->
+            {% for hour in range(8, 18) %}
+            <div class="time-slot">{{ hour }}h-{{ hour+1 }}h</div>
+            
+            {% for day in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] %}
+            <div class="schedule-cell">
+                {% for course in courses %}
+                {% if course.day == day and course.start_time.startswith(hour|string + ':') %}
+                <div class="course-in-grid {% if course.assigned_room %}assigned{% endif %} {% if 'TP' in course.course_type or 'tp' in course.course_type %}tp{% endif %}">
+                    <div class="prof-name">{{ course.professor }}</div>
+                    <div class="course-type">{{ course.course_type }}</div>
+                    <div class="course-duration">{{ course.start_time }}-{{ course.end_time }}</div>
+                    {% if course.assigned_room %}
+                    <div class="room-badge">
+                        📍 Salle {{ course.assigned_room }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div class="legend">
+            <h3>Légende</h3>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));"></div>
+                    <span>Cours magistral</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
+                    <span>Travaux pratiques (TP)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="border: 2px solid var(--success-color); background: white;"></div>
+                    <span>Salle attribuée</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erreur - Application Emploi du Temps</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .error-container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            text-align: center;
+        }
+        .error-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .error-title {
+            color: #e74c3c;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .error-message {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        .back-button {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .back-button:hover {
+            background: #2980b9;
+        }
+        .error-details {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+            font-family: monospace;
+            font-size: 14px;
+            color: #495057;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <div class="error-title">
+            {% if error.code == 404 %}
+                Page non trouvée
+            {% else %}
+                Erreur serveur
+            {% endif %}
+        </div>
+        <div class="error-message">
+            {% if error.code == 404 %}
+                La page que vous recherchez n'existe pas ou a été déplacée.
+            {% else %}
+                Une erreur inattendue s'est produite. Veuillez réessayer plus tard.
+            {% endif %}
+        </div>
+        <a href="{{ url_for('admin') }}" class="back-button">Retour à l'accueil</a>
+        
+        {% if error %}
+        <div class="error-details">
+            <strong>Détails de l'erreur :</strong><br>
+            Code: {{ error.code if error.code else '500' }}<br>
+            Description: {{ error.description if error.description else str(error) }}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html> 

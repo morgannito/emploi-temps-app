@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue d'Ensemble des Horaires - Administration</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; color: #333; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 20px auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #2c3e50; }
+        .add-prof-section { margin-bottom: 30px; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
+        .add-prof-section input { font-size: 1em; padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-right: 10px; width: 300px; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-add { background-color: #2ecc71; color: white; }
+        .prof-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .prof-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); transition: all 0.3s ease; display: flex; flex-direction: column; }
+        .prof-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+        .prof-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .prof-name { font-size: 1.4em; font-weight: 600; color: #34495e; }
+        .btn-delete-prof { background: none; border: none; font-size: 1.5em; color: #e74c3c; cursor: pointer; transition: color 0.2s; }
+        .btn-delete-prof:hover { color: #c0392b; }
+        .prof-card-body { flex-grow: 1; }
+        .prof-card .total-hours { font-size: 1.1em; font-weight: bold; color: #2980b9; margin-bottom: 15px; }
+        .day-summary { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .day-tag { background-color: #ecf0f1; padding: 4px 10px; border-radius: 15px; font-size: 0.9em; font-weight: 500; color: #7f8c8d; }
+        .color-palette { display: flex; gap: 8px; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
+        .color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .color-dot.active, .color-dot:hover { border-color: #3498db; transform: scale(1.15); }
+        .btn-edit { display: block; background-color: #3498db; color: white; text-align: center; padding: 10px; margin-top: 15px; border-radius: 5px; text-decoration: none; transition: background-color 0.2s; }
+        .btn-edit:hover { background-color: #2980b9; }
+        .nav-back { display: inline-block; margin-bottom: 20px; color: #3498db; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('admin') }}" class="nav-back">← Retour à l'attribution des salles</a>
+        <div class="header">
+            <h1>Horaires des Professeurs</h1>
+            <p>Vue d'ensemble des heures de cours hebdomadaires par professeur.</p>
+            <div style="margin-top: 20px;">
+                <a href="{{ url_for('export_week_pdf', week_name='Semaine 36 A') }}" class="btn" style="background: #e74c3c; color: white; padding: 12px 20px; font-size: 1.1em;">📄 Exporter PDF Semaine 36A</a>
+                <a href="{{ url_for('export_week_pdf', week_name='Semaine 37 B') }}" class="btn" style="background: #e67e22; color: white; padding: 12px 20px; font-size: 1.1em;">📄 Exporter PDF Semaine 37B</a>
+            </div>
+        </div>
+
+        <div class="add-prof-section">
+            <input type="text" id="new-prof-name" placeholder="Nom du nouveau professeur">
+            <button id="add-prof-btn" class="btn btn-add">➕ Ajouter</button>
+        </div>
+
+        <div class="prof-grid">
+            {% set processed_profs = [] %}
+            {% for prof, data in summary.items()|sort %}
+            {% if prof not in processed_profs %}
+            {% set _ = processed_profs.append(prof) %}
+            <div class="prof-card" style="border-top: 5px solid {{ data.color }};">
+                <div class="prof-card-header">
+                    <div class="prof-name">{{ prof }}</div>
+                    <button class="btn-delete-prof" data-prof-name="{{ prof_name_mapping[prof] }}" title="Supprimer ce professeur">&times;</button>
+                </div>
+                <div class="prof-card-body">
+                    <div class="total-hours">Total Heures / Semaine : <strong>{{ data.total_hours }}</strong></div>
+                    <div class="day-summary">
+                        {% for day, hours in data.days.items()|sort %}
+                            <span class="day-tag">{{ day }}: {{ hours }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="color-palette">
+                        {% for color in prof_colors %}
+                        <span class="color-dot {% if color == data.color %}active{% endif %}" 
+                              style="background-color: {{ color }};"
+                              data-color="{{ color }}"
+                              data-prof-name="{{ prof_name_mapping[prof] }}"></span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <a href="{{ url_for('edit_schedule', prof_name=prof_name_mapping[prof]) }}" class="btn-edit">Modifier l'emploi du temps</a>
+            </div>
+            {% endif %}
+            {% else %}
+            <p>Aucun emploi du temps consolidé n'a été trouvé.</p>
+            {% endfor %}
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Logique pour ajouter un professeur
+        const addProfBtn = document.getElementById('add-prof-btn');
+        const newProfNameInput = document.getElementById('new-prof-name');
+
+        addProfBtn.addEventListener('click', async () => {
+            const profName = newProfNameInput.value.trim();
+            if (!profName) {
+                alert('Veuillez entrer un nom pour le professeur.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/professors/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: profName })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Professeur ajouté avec succès !');
+                    location.reload();
+                } else {
+                    alert('Erreur : ' + result.error);
+                }
+            } catch (error) {
+                alert('Une erreur réseau est survenue.');
+            }
+        });
+
+        // Logique pour supprimer un professeur
+        document.querySelectorAll('.btn-delete-prof').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const profName = e.currentTarget.dataset.profName;
+                if (confirm(`Êtes-vous sûr de vouloir supprimer le professeur "${profName}" et tout son emploi du temps ? Cette action est irréversible.`)) {
+                    try {
+                        const response = await fetch('/api/professors/delete', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: profName })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('Professeur supprimé avec succès.');
+                            location.reload();
+                        } else {
+                            alert('Erreur : ' + result.error);
+                        }
+                    } catch (error) {
+                        alert('Une erreur réseau est survenue.');
+                    }
+                }
+            });
+        });
+
+        // Logique pour changer la couleur d'un professeur
+        document.querySelectorAll('.color-dot').forEach(dot => {
+            dot.addEventListener('click', async (e) => {
+                const profName = e.currentTarget.dataset.profName;
+                const newColor = e.currentTarget.dataset.color;
+                const card = e.currentTarget.closest('.prof-card');
+                const oldColor = card.style.borderTopColor;
+
+                // 1. Mise à jour optimiste de l'UI (on le fait tout de suite)
+                card.style.borderTopColor = newColor;
+                const currentActive = card.querySelector('.color-dot.active');
+                if(currentActive) currentActive.classList.remove('active');
+                e.currentTarget.classList.add('active');
+                
+                try {
+                    // 2. Envoi de la requête au serveur
+                    const response = await fetch('/api/professors/update_color', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: profName, color: newColor })
+                    });
+
+                    // Si le serveur répond (même avec une erreur), on vérifie le statut
+                    if (!response.ok) {
+                        const result = await response.json();
+                        alert('Erreur lors de la mise à jour : ' + result.error);
+                        // En cas d'erreur, on annule la modification visuelle
+                        card.style.borderTopColor = oldColor;
+                        e.currentTarget.classList.remove('active');
+                        if(currentActive) currentActive.classList.add('active');
+                    }
+                } catch (error) {
+                    // 3. On ignore l'erreur réseau attendue due au redémarrage du serveur.
+                    // L'action a très probablement réussi. On l'affiche en console pour info.
+                    console.log('Network request failed, likely due to server restart. UI updated optimistically.');
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html> 

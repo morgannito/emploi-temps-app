@@ -1,0 +1,298 @@
+{
+    "teachers": [
+      {
+        "_id": "1",
+        "name": "M Bogaert",
+        "subject": "Informatique"
+      },
+      {
+        "_id": "2",
+        "name": "M Chemet",
+        "subject": "Histoire-Géographie"
+      },
+      {
+        "_id": "3",
+        "name": "M Clement",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "4",
+        "name": "M Gau",
+        "subject": "Technologie"
+      },
+      {
+        "_id": "5",
+        "name": "M Grand",
+        "subject": "Mathématiques"
+      },
+      {
+        "_id": "6",
+        "name": "M Landelle",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "7",
+        "name": "M Lo Ré",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "8",
+        "name": "M MOYA",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "9",
+        "name": "M Marty",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "10",
+        "name": "M Masse",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "11",
+        "name": "M Moya",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "12",
+        "name": "M Radonde",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "13",
+        "name": "M Roba",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "14",
+        "name": "M Sanchez",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "15",
+        "name": "M Sanchez S",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "16",
+        "name": "M Sourioux",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "17",
+        "name": "M Tripier",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "18",
+        "name": "M Tripier/",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "19",
+        "name": "M Turcan",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "20",
+        "name": "Mme AZAIS",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "21",
+        "name": "Mme Albouys",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "22",
+        "name": "Mme Allik/M Moya",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "23",
+        "name": "Mme Allik/MmeMartin",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "24",
+        "name": "Mme Barascud",
+        "subject": "Biologie"
+      },
+      {
+        "_id": "25",
+        "name": "Mme Battle",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "26",
+        "name": "Mme Benoit",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "27",
+        "name": "Mme Casenove",
+        "subject": "Français"
+      },
+      {
+        "_id": "28",
+        "name": "Mme Clermond",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "29",
+        "name": "Mme Duffaud",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "30",
+        "name": "Mme Duverneix",
+        "subject": "Sciences"
+      },
+      {
+        "_id": "31",
+        "name": "Mme Escher",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "32",
+        "name": "Mme Garsaball",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "33",
+        "name": "Mme Gaulard Vilches",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "34",
+        "name": "Mme Gaulard vilches",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "35",
+        "name": "Mme Godey",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "36",
+        "name": "Mme Guirado",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "37",
+        "name": "Mme Hellouvry",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "38",
+        "name": "Mme Kaminski",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "39",
+        "name": "Mme Louvet",
+        "subject": "Chimie"
+      },
+      {
+        "_id": "40",
+        "name": "Mme Magnier",
+        "subject": "Physique"
+      },
+      {
+        "_id": "41",
+        "name": "Mme Martin",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "42",
+        "name": "Mme Marty",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "43",
+        "name": "Mme Mestres",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "44",
+        "name": "Mme Moya",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "45",
+        "name": "Mme Navarro",
+        "subject": "Langues"
+      },
+      {
+        "_id": "46",
+        "name": "Mme Osterstock",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "47",
+        "name": "Mme Perez- Tripier",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "48",
+        "name": "Mme Perez-tripier",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "49",
+        "name": "Mme Revendy",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "50",
+        "name": "Mme Reverdy",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "51",
+        "name": "Mme Rhaiem",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "52",
+        "name": "Mme Roglet",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "53",
+        "name": "Mme Roldan",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "54",
+        "name": "Mme Thomas",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "55",
+        "name": "Mme Tripier",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "56",
+        "name": "Mme Vasquez",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "57",
+        "name": "Mme casenove",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "58",
+        "name": "Mme iglesias",
+        "subject": "Non spécifié"
+      },
+      {
+        "_id": "59",
+        "name": "Mme perez -tripier",
+        "subject": "Non spécifié"
+      }
+    ]}

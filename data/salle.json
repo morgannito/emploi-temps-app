@@ -1,0 +1,111 @@
+{
+  "rooms": [
+  {
+    "_id": "1",
+    "name": "L101",
+    "capacity": 25,
+    "equipment": "Tableau, chaises, bureaux, projecteur"
+  },
+  {
+    "_id": "3",
+    "name": "L103",
+    "capacity": 25,
+    "equipment": "Tableau, chaises, bureaux, projecteur"
+  },
+  {
+    "_id": "4",
+    "name": "L104",
+    "capacity": 25,
+    "equipment": "Tableau, chaises, bureaux, projecteur"
+  },
+  {
+    "_id": "5",
+    "name": "L105",
+    "capacity": 25,
+    "equipment": "Tableau, chaises, bureaux, projecteur"
+  },
+  {
+    "_id": "6",
+    "name": "L106",
+    "capacity": 25,
+    "equipment": "Tableau, chaises, bureaux, projecteur"
+  },
+  {
+    "_id": "7",
+    "name": "L107",
+    "capacity": 25,
+    "equipment": "Tableau, chaises, bureaux, projecteur"
+  },
+  {
+    "_id": "8",
+    "name": "L201",
+    "capacity": 30,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur"
+  },
+  {
+    "_id": "9",
+    "name": "L202",
+    "capacity": 30,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur"
+  },
+  {
+    "_id": "10",
+    "name": "L203",
+    "capacity": 30,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur"
+  },
+  {
+    "_id": "11",
+    "name": "L204",
+    "capacity": 30,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur"
+  },
+  {
+    "_id": "12",
+    "name": "L205",
+    "capacity": 30,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur"
+  },
+  {
+    "_id": "13",
+    "name": "L206",
+    "capacity": 30,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur"
+  },
+  {
+    "_id": "14",
+    "name": "L207",
+    "capacity": 30,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur"
+  },
+  {
+    "_id": "15",
+    "name": "Non attribué",
+    "capacity": 35,
+    "equipment": "."
+  },
+  {
+    "_id": "16",
+    "name": "L302",
+    "capacity": 35,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur, écran interactif"
+  },
+  {
+    "_id": "19",
+    "name": "L305",
+    "capacity": 35,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur, écran interactif"
+  },
+  {
+    "_id": "20",
+    "name": "L306",
+    "capacity": 35,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur, écran interactif"
+  },
+  {
+    "_id": "21",
+    "name": "L307",
+    "capacity": 35,
+    "equipment": "Tableau, chaises, bureaux, projecteur, ordinateur, écran interactif"
+  }
+]}

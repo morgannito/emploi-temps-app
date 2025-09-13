@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📅 {{ period_label }} - {{ current_day }} {{ current_week }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            min-height: 100vh;
+            overflow: hidden;
+            line-height: 1.4;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(70, 145, 168, 0.1);
+            border: 1px solid #4691A8;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #4691A8;
+            margin-bottom: 5px;
+        }
+
+        .current-time {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #F39C6B;
+            font-family: monospace;
+        }
+
+        .schedule-container {
+            flex: 1;
+            overflow: auto;
+        }
+
+        /* MINIMAL TEXT STYLE - V5 */
+        .text-list {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .course-line {
+            display: flex;
+            align-items: center;
+            padding: 8px 15px;
+            border-left: 3px solid var(--prof-color, #4691A8);
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.2s ease;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .course-line:hover {
+            background: rgba(70, 145, 168, 0.1);
+            transform: translateX(5px);
+        }
+
+        .time-part {
+            color: #4691A8;
+            font-weight: 700;
+            width: 110px;
+            flex-shrink: 0;
+        }
+
+        .prof-part {
+            color: #f0f0f0;
+            font-weight: 600;
+            width: 200px;
+            flex-shrink: 0;
+        }
+
+        .subject-part {
+            color: #aaa;
+            width: 180px;
+            flex-shrink: 0;
+        }
+
+        .room-part {
+            color: #F39C6B;
+            font-weight: 500;
+            margin-left: auto;
+        }
+
+        .separator {
+            color: #666;
+            margin: 0 12px;
+        }
+
+        .stats {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(70, 145, 168, 0.1);
+            border: 1px solid #4691A8;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #4691A8;
+            font-family: monospace;
+        }
+
+        .period-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #4691A8;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 100px 20px;
+            color: #666;
+            font-family: monospace;
+        }
+    </style>
+    <meta http-equiv="refresh" content="300">
+</head>
+<body>
+    <div class="period-indicator">
+        {{ period_label.upper() }}
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="current-time">{{ current_time }}</div>
+            <h1>{{ period_label.upper() }}</h1>
+            <div style="color: #aaa; font-size: 0.95rem;">{{ current_day }} - {{ current_week }}</div>
+        </div>
+
+        <div class="schedule-container">
+            {% if time_slots_data %}
+                <div class="text-list">
+                    {% set all_courses = [] %}
+                    {% for time_slot in time_slots %}
+                        {% for course in time_slots_data[time_slot.label].courses %}
+                            {{ all_courses.append({
+                                'start_time': course.start_time,
+                                'end_time': course.end_time,
+                                'professor': course.professor,
+                                'subject': course.subject or course.course_type,
+                                'room_name': course.room_name,
+                                'prof_color': course.prof_color if course.prof_color else '#4691A8'
+                            }) or "" }}
+                        {% endfor %}
+                    {% endfor %}
+                    
+                    {% for course in all_courses %}
+                    <div class="course-line" style="--prof-color: {{ course.prof_color }};">
+                        <div class="time-part">{{ course.start_time }}-{{ course.end_time }}</div>
+                        <div class="separator">│</div>
+                        <div class="prof-part">{{ course.professor }}</div>
+                        <div class="separator">│</div>
+                        <div class="subject-part">{{ course.subject }}</div>
+                        <div class="separator">│</div>
+                        <div class="room-part">{{ course.room_name }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div style="font-size: 2rem; margin-bottom: 20px;">[ EMPTY ]</div>
+                    <div>{% if period == 'morning' %}NO MORNING CLASSES{% else %}NO AFTERNOON CLASSES{% endif %}</div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="stats">
+            TOTAL: {{ total_courses }} COURSES
+        </div>
+    </div>
+
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            const timeElement = document.querySelector('.current-time');
+            if (timeElement) timeElement.innerHTML = timeString;
+        }
+        setInterval(updateTime, 1000);
+
+        const container = document.querySelector('.schedule-container');
+        let scrollPosition = 0, scrollDirection = 1;
+        
+        function autoScroll() {
+            const maxScroll = container.scrollHeight - container.clientHeight;
+            if (maxScroll > 0) {
+                scrollPosition += scrollDirection * 0.5;
+                if (scrollPosition >= maxScroll) scrollDirection = -1;
+                else if (scrollPosition <= 0) scrollDirection = 1;
+                container.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+            }
+        }
+        
+        setTimeout(() => {
+            if (container.scrollHeight > container.clientHeight) {
+                setInterval(autoScroll, 100);
+            }
+        }, 10000);
+
+        function checkForPeriodChange() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentPeriod = "{{ period }}";
+            if ((currentHour < 12 && currentPeriod === "afternoon") || 
+                (currentHour >= 12 && currentPeriod === "morning")) {
+                window.location.reload();
+            }
+        }
+        setInterval(checkForPeriodChange, 60000);
+    </script>
+</body>
+</html>
