@@ -1025,18 +1025,6 @@ def list_professors_overview_minimal():
                          prof_name_mapping=prof_name_mapping,
                          prof_id_mapping=prof_id_mapping)
 
-@app.route('/professors/links')
-def professors_links():
-    """Page affichant les liens directs vers les emplois du temps des professeurs."""
-    schedule_manager.reload_data()
-
-    # Utiliser le service pour extraire les professeurs
-    all_courses = schedule_manager.get_all_courses()
-    professors = ProfessorService.extract_professors_from_courses(all_courses)
-
-    return render_template('prof_list.html',
-                         professors=professors,
-                         prof_id_mapping=ProfessorService.get_all_professors_with_ids())
 
 @app.route('/edit_schedule/<path:prof_name>')
 def edit_schedule(prof_name: str):
