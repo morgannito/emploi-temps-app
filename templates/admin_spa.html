@@ -7,7 +7,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attribution des Salles SPA - {{ current_week }}</title>
+    <title>Attribution des Salles - {{ current_week }}</title>
     <style>
         :root {
             --main-bg-color: #f4f7f6;
@@ -402,7 +402,7 @@
     <div class="container">
         <div class="header">
             <h1>Attribution des Salles</h1>
-            <p>Vue générale de l'emploi du temps par jour (SPA).</p>
+            <p>Vue générale de l'emploi du temps par jour.</p>
             {% if current_week_info %}
             <p id="week-info" style="color: #666; font-size: 0.9em; margin-top: 5px;">
                 📅 Semaine du {{ current_week_info.date }}

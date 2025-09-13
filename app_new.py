@@ -428,7 +428,7 @@ def admin(week_name=None):
     # Construire la grille hebdomadaire
     weekly_grid = CourseGridService.build_weekly_grid(courses_to_place_in_grid, time_slots, days_order)
 
-    return render_template('admin_new.html', 
+    return render_template('admin_spa.html', 
                          weekly_grid=weekly_grid,
                          time_slots=time_slots,
                          days_order=days_order,
@@ -1115,71 +1115,14 @@ def switch_to_json():
 
 @app.route('/spa')
 @app.route('/spa/week/<week_name>')
-def spa_admin(week_name=None):
-    """Interface d'administration en mode SPA - copie intégrale de /"""
-    print(f"SPA Route called with week_name: {week_name}")
+def spa_redirect(week_name=None):
+    """Redirection de l'ancienne route SPA vers la route principale"""
+    from flask import redirect, url_for
 
-    # Forcer la synchronisation des données en production
-    schedule_manager.force_sync_data()
-
-    # Vérifier la cohérence des données
-    try:
-        # Vérifier que les attributions de salles sont cohérentes
-        all_courses = schedule_manager.get_all_courses()
-        room_assignments_count = len(schedule_manager.room_assignments)
-        courses_with_rooms = sum(1 for c in all_courses if c.assigned_room)
-
-        if abs(room_assignments_count - courses_with_rooms) > 5:  # Tolérance de 5
-            print(f"Warning: Incohérence détectée - Attributions: {room_assignments_count}, Cours avec salles: {courses_with_rooms}")
-            # Forcer une nouvelle synchronisation
-            schedule_manager.force_sync_data()
-    except Exception as e:
-        print(f"Erreur lors de la vérification de cohérence: {e}")
-
-    # Utiliser les services pour générer les données
-    weeks_to_display = WeekService.generate_academic_calendar()
-    print(f"SPA Route: Generated {len(weeks_to_display) if weeks_to_display else 0} weeks")
-
-    if not weeks_to_display:
-        return "Erreur lors de la génération du calendrier.", 500
-
-    # Déterminer la semaine à afficher
-    if week_name is None:
-        week_name = WeekService.get_current_week_name(weeks_to_display)
-
-    # Trouver les informations de la semaine
-    current_week_info = WeekService.find_week_info(week_name, weeks_to_display)
-    if not current_week_info:
-        # Fallback si la semaine n'est pas trouvée
-        current_week_info = weeks_to_display[0]
-        week_name = current_week_info['name']
-
-    # Générer la grille horaire et l'ordre des jours
-    time_slots = TimeSlotService.generate_time_grid()
-    days_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-
-    # Préparer les cours pour la semaine
-    all_courses_for_week = CourseGridService.prepare_courses_for_week(schedule_manager, week_name)
-
-    # Préparer les cours avec les TPs attachés
-    courses_to_place_in_grid = CourseGridService.prepare_courses_with_tps(all_courses_for_week)
-
-    # Construire la grille hebdomadaire
-    weekly_grid = CourseGridService.build_weekly_grid(courses_to_place_in_grid, time_slots, days_order)
-
-    print(f"SPA Route: Rendering template with current_week='{week_name}' and {len(weeks_to_display)} weeks")
-    print(f"SPA Route: First few weeks: {[w.get('name', 'NO_NAME') for w in weeks_to_display[:3]]}")
-
-    return render_template('admin_spa.html',
-                         weekly_grid=weekly_grid,
-                         time_slots=time_slots,
-                         days_order=days_order,
-                         rooms=schedule_manager.rooms,
-                         get_room_name=schedule_manager.get_room_name,
-                         all_weeks=weeks_to_display,
-                         current_week=week_name,
-                         current_week_info=current_week_info,
-                         all_professors=schedule_manager.get_normalized_professors_list())
+    if week_name:
+        return redirect(url_for('admin', week_name=week_name), code=301)
+    else:
+        return redirect(url_for('admin'), code=301)
 
 @app.route('/api/week_data/<week_name>')
 def api_week_data(week_name):
