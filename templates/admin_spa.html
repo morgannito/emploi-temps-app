@@ -298,6 +298,24 @@
         .btn-add-tp-course:hover {
             background: #218838;
         }
+        .btn-delete-tp {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            margin-left: 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 1;
+        }
+        .btn-delete-tp:hover {
+            background: #c82333;
+        }
+        .tp-name {
+            position: relative;
+            display: inline-block;
+        }
 
         .btn-report-course {
             background: #ffc107;
@@ -796,6 +814,7 @@
             this.initializeRoomSelection();
             this.bindModalEvents();
             this.loadSavedTpNames();
+            this.bindDeleteTpButtons();
 
             // Vérifier si ScheduleManager existe (créé par admin.js)
             console.log('SPA: Checking ScheduleManager availability...');
@@ -859,15 +878,67 @@
                         if (courseElement) {
                             const courseTypeElement = courseElement.querySelector('.course-type');
                             if (courseTypeElement) {
-                                courseTypeElement.innerHTML = `${courseTypeElement.textContent} <span class="tp-name">${tpName}</span>`;
+                                courseTypeElement.innerHTML = `${courseTypeElement.textContent} <span class="tp-name">${tpName}<button class="btn-delete-tp" data-course-id="${courseId}" title="Supprimer le TP">✕</button></span>`;
                                 courseElement.classList.add('has-tp');
                             }
                         }
                     });
                 }
+                // Rebinder les boutons de suppression après avoir ajouté les noms de TP
+                this.bindDeleteTpButtons();
             } catch (error) {
                 console.error('Erreur lors du chargement des noms de TP:', error);
             }
+        }
+
+        bindDeleteTpButtons() {
+            // Attacher les event listeners aux boutons de suppression TP existants
+            document.querySelectorAll('.btn-delete-tp').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const courseId = e.currentTarget.dataset.courseId;
+
+                    if (!confirm('Êtes-vous sûr de vouloir supprimer ce TP ?')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('/api/courses/delete_tp_name', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                course_id: courseId
+                            })
+                        });
+
+                        const result = await response.json();
+                        if (result.success) {
+                            // Mettre à jour l'affichage - supprimer le nom de TP
+                            const courseElement = document.querySelector(`[data-course-id="${courseId}"]`);
+                            if (courseElement) {
+                                const courseTypeElement = courseElement.querySelector('.course-type');
+                                if (courseTypeElement) {
+                                    // Supprimer le span tp-name et son contenu
+                                    const tpNameElement = courseTypeElement.querySelector('.tp-name');
+                                    if (tpNameElement) {
+                                        tpNameElement.remove();
+                                        courseElement.classList.remove('has-tp');
+                                    }
+                                }
+                            }
+                        } else {
+                            alert('Erreur lors de la suppression du TP: ' + (result.message || 'Erreur inconnue'));
+                        }
+                    } catch (error) {
+                        console.error('Erreur:', error);
+                        alert('Erreur lors de la suppression du TP');
+                    }
+                });
+            });
         }
 
         // Méthodes simplifiées pour maintenir la compatibilité
@@ -976,10 +1047,12 @@
                                     const courseTypeElement = courseElement.querySelector('.course-type');
                                     if (courseTypeElement) {
                                         const originalText = courseTypeElement.textContent.replace(/\s*<span class="tp-name"[^>]*>.*?<\/span>/g, '');
-                                        courseTypeElement.innerHTML = `${originalText} <span class="tp-name">${data.course_type}</span>`;
+                                        courseTypeElement.innerHTML = `${originalText} <span class="tp-name">${data.course_type}<button class="btn-delete-tp" data-course-id="${data.course_id}" title="Supprimer le TP">✕</button></span>`;
                                         courseElement.classList.add('has-tp');
                                     }
                                 }
+                                // Rebinder les boutons de suppression après ajout du TP
+                                window.spaManager.bindDeleteTpButtons();
                                 addModal.style.display = 'none';
                             } else {
                                 alert('Erreur lors de l\'ajout du TP: ' + (result.message || 'Erreur inconnue'));
