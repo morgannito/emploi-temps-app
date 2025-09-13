@@ -6,7 +6,7 @@ Application Flask pour l'attribution de salles aux professeurs
 basée sur leurs horaires extraits du fichier Excel
 """
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 import hashlib
 import json
 import os
@@ -1540,27 +1540,8 @@ def delete_tp_name():
 @app.route('/student')
 @app.route('/student/<week_name>')
 def student_view(week_name=None):
-    """Interface étudiants - affiche les cours du jour de la semaine en cours."""
-    # Utiliser le service pour récupérer toutes les données
-    student_data = StudentService.get_student_view_data(schedule_manager, request, week_name)
-
-    # Choisir le template selon le mode
-    template_name = 'student_view_kiosque.html' if student_data['kiosque_mode'] else 'student_view.html'
-
-    return render_template(template_name,
-                         student_grid=student_data['student_grid'],
-                         time_slots=student_data['time_slots'],
-                         days_order=student_data['days_order'],
-                         current_week=student_data['current_week'],
-                         all_weeks=student_data['all_weeks'],
-                         current_period=student_data['current_period'],
-                         current_day=student_data['current_day'],
-                         period_label=student_data['period_label'],
-                         total_courses=student_data['total_courses'],
-                         show_selector=student_data['show_selector'],
-                         forced_period=student_data['forced_period'],
-                         forced_day=student_data['forced_day'],
-                         valid_days=student_data['valid_days'])
+    """Redirection vers la nouvelle vue kiosque compact."""
+    return redirect(url_for('kiosque_halfday', layout='compact'))
 
 
 # ============== NOUVELLES ROUTES KIOSQUE ==============
