@@ -875,8 +875,61 @@
             // Version simplifiée du filtrage des salles
         }
 
-        openAddTpModal(day, time, prof, courseId, mode) {
-            // Version simplifiée de l'ouverture modal
+        openAddTpModal(day, time = '', prof = '', courseId = '', initialMode = 'add') {
+            const addForm = document.getElementById('add-tp-form');
+            const addModal = document.getElementById('add-tp-modal');
+
+            addForm.reset();
+            addForm.querySelector('#tp-day').value = day;
+
+            // Déterminer le mode réel basé sur le courseId
+            let mode = initialMode;
+            if (courseId && courseId.trim()) {
+                mode = 'edit';
+            }
+
+            // Gérer le champ professeur
+            const profSelect = addForm.querySelector('#tp-prof');
+            if (mode === 'edit' && prof) {
+                let found = false;
+                for (let option of profSelect.options) {
+                    if (option.value === prof) {
+                        option.selected = true;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found && prof.trim()) {
+                    const newOption = document.createElement('option');
+                    newOption.value = prof;
+                    newOption.textContent = prof;
+                    newOption.selected = true;
+                    profSelect.appendChild(newOption);
+                }
+            } else if (prof) {
+                profSelect.value = prof;
+            }
+
+            addForm.querySelector('#tp-time').value = time;
+            addForm.querySelector('#tp-course-id').value = courseId;
+            addForm.querySelector('#tp-mode').value = mode;
+
+            // Mettre à jour le titre et le bouton selon le mode
+            const modalTitle = document.getElementById('tp-modal-title');
+            const submitBtn = document.getElementById('tp-submit-btn');
+
+            if (mode === 'edit') {
+                modalTitle.textContent = 'Ajouter un TP au cours';
+                submitBtn.textContent = 'Modifier le TP';
+                addForm.querySelector('#tp-name').placeholder = 'Ex: TP1, TP2, TP3...';
+            } else {
+                modalTitle.textContent = 'Ajouter un nouveau TP';
+                submitBtn.textContent = 'Ajouter le TP';
+                addForm.querySelector('#tp-name').placeholder = 'Nom du nouveau TP';
+            }
+
+            addModal.style.display = 'block';
         }
     }
 
@@ -891,6 +944,76 @@
             spaManager = new AdminSPAManager();
             console.log('SPA: AdminSPAManager initialized:', spaManager);
             console.log('SPA: ScheduleManager status:', window.scheduleManager ? 'exists' : 'not found');
+
+            // Gestionnaire pour le formulaire d'ajout de TP
+            const addForm = document.getElementById('add-tp-form');
+            const addModal = document.getElementById('add-tp-modal');
+
+            if (addForm) {
+                addForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(addForm);
+                    const data = Object.fromEntries(formData.entries());
+                    const mode = data.mode;
+
+                    if (mode === 'edit') {
+                        // Mode édition : ajouter TP au cours existant
+                        try {
+                            const response = await fetch('/api/courses/update_tp_name', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    course_id: data.course_id,
+                                    tp_name: data.course_type
+                                })
+                            });
+
+                            const result = await response.json();
+                            if (result.success) {
+                                // Mettre à jour l'affichage
+                                const courseElement = document.querySelector(`[data-course-id="${data.course_id}"]`);
+                                if (courseElement) {
+                                    const courseTypeElement = courseElement.querySelector('.course-type');
+                                    if (courseTypeElement) {
+                                        const originalText = courseTypeElement.textContent.replace(/\s*<span class="tp-name"[^>]*>.*?<\/span>/g, '');
+                                        courseTypeElement.innerHTML = `${originalText} <span class="tp-name">${data.course_type}</span>`;
+                                        courseElement.classList.add('has-tp');
+                                    }
+                                }
+                                addModal.style.display = 'none';
+                            } else {
+                                alert('Erreur lors de l\'ajout du TP: ' + (result.message || 'Erreur inconnue'));
+                            }
+                        } catch (error) {
+                            console.error('Erreur:', error);
+                            alert('Erreur lors de l\'ajout du TP');
+                        }
+                    } else {
+                        // Mode ajout : créer nouveau cours TP
+                        try {
+                            const response = await fetch('/api/courses/add_custom', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(data)
+                            });
+
+                            const result = await response.json();
+                            if (result.success) {
+                                addModal.style.display = 'none';
+                                // Recharger la semaine courante
+                                if (spaManager && spaManager.currentWeek) {
+                                    spaManager.loadWeekData(spaManager.currentWeek);
+                                }
+                            } else {
+                                alert('Erreur lors de l\'ajout du cours: ' + (result.message || 'Erreur inconnue'));
+                            }
+                        } catch (error) {
+                            console.error('Erreur:', error);
+                            alert('Erreur lors de l\'ajout du cours');
+                        }
+                    }
+                });
+            }
         }, 100);
 
         // Gestion de l'historique du navigateur
