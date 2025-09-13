@@ -30,4 +30,10 @@ data/schedule.json
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Fichiers de sauvegarde
+backups/
+*.backup
+*.bak
+*.tar.gz 
