@@ -642,6 +642,34 @@ def assign_room():
         return jsonify({'success': False, 'error': str(e)})
 
 
+@app.route('/api/test_sync_db', methods=['POST'])
+def test_sync_db():
+    """Route de test pour déclencher manuellement la synchronisation DB"""
+    try:
+        print("🧪 TEST: Déclenchement de la synchronisation manuelle")
+        updated_count = schedule_manager.data_service.sync_room_assignments_to_db(schedule_manager.room_assignments)
+
+        # Vérifier l'état après synchronisation
+        all_courses = schedule_manager.get_all_courses()
+        courses_with_rooms = len([c for c in all_courses if c.assigned_room])
+        assignments_count = len(schedule_manager.room_assignments)
+
+        print(f"📊 RÉSUMÉ: {updated_count} cours mis à jour, {assignments_count} assignments JSON, {courses_with_rooms} cours avec salles en DB")
+
+        return jsonify({
+            'success': True,
+            'updated_count': updated_count,
+            'assignments_count': assignments_count,
+            'courses_with_rooms': courses_with_rooms,
+            'message': f'Synchronisation terminée: {updated_count} cours mis à jour'
+        })
+    except Exception as e:
+        print(f"❌ TEST SYNC ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+
 @app.route('/api/get_conflict_details', methods=['POST'])
 def get_conflict_details():
     """API pour obtenir les détails des conflits de salle"""
