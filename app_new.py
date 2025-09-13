@@ -80,447 +80,126 @@ class ProfessorCourse:
     course_id: str
 
 class ScheduleManager:
-    """Gestionnaire des emplois du temps"""
-    
+    """Gestionnaire des emplois du temps refactorisé avec services"""
+
     def __init__(self):
-        # Fichier pour l'assignation des salles (basé sur l'extraction brute)
-        self.schedules_file = "data/extracted_schedules.json"
-        
-        # Fichier pour l'édition des horaires des profs (canonique)
-        self.canonical_schedule_file = "data/professors_canonical_schedule.json"
-        
-        self.assignments_file = "data/room_assignments.json"
-        self.rooms_file = "data/salle.json"
-        self.prof_data_file = "data/prof_data.json"
-        self.custom_courses_file = "data/custom_courses.json"
-        
-        # Données
-        self.schedules = {} # Données brutes par semaine
-        self.canonical_schedules = {} # Données canoniques par prof
+        # Initialiser les services
+        from services.file_management_service import FileManagementService
+        from services.professor_management_service import ProfessorManagementService
+        from services.custom_course_service import CustomCourseService
+        from services.schedule_data_service import ScheduleDataService
+
+        self.file_service = FileManagementService()
+        self.professor_service = ProfessorManagementService(self.file_service)
+        self.custom_course_service = CustomCourseService(self.file_service)
+        self.data_service = ScheduleDataService(self.file_service)
+
+        # Données en cache
+        self.schedules = {}
+        self.canonical_schedules = {}
         self.room_assignments = {}
         self.rooms = []
-        self.prof_data = {} # Données spécifiques aux profs (couleur, etc.)
-        self.custom_courses = [] # Cours ajoutés manuellement
-        
+        self.prof_data = {}
+        self.custom_courses = []
+
         self.load_data()
     
     def load_data(self):
-        """Charge toutes les données nécessaires"""
-        # Charger les données brutes pour l'assignation
-        if os.path.exists(self.schedules_file):
-            with open(self.schedules_file, 'r', encoding='utf-8') as f:
-                self.schedules = json.load(f)
-        
-        # Charger les données canoniques pour l'édition
-        if os.path.exists(self.canonical_schedule_file):
-            with open(self.canonical_schedule_file, 'r', encoding='utf-8') as f:
-                self.canonical_schedules = json.load(f)
-        else:
-            # Si le fichier n'existe pas, on initialise avec un dictionnaire vide.
-            # L'application dépend maintenant uniquement de ce fichier JSON.
-            self.canonical_schedules = {}
-        
-        # Charger les données des professeurs (couleurs)
-        if os.path.exists(self.prof_data_file):
-            with open(self.prof_data_file, 'r', encoding='utf-8') as f:
-                self.prof_data = json.load(f)
-
-        # Charger les cours personnalisés
-        if os.path.exists(self.custom_courses_file):
-            with open(self.custom_courses_file, 'r', encoding='utf-8') as f:
-                self.custom_courses = json.load(f)
-        
-        # Charger les attributions de salles et les salles
-        if os.path.exists(self.assignments_file):
-            with open(self.assignments_file, 'r', encoding='utf-8') as f:
-                self.room_assignments = json.load(f)
-        if os.path.exists(self.rooms_file):
-            with open(self.rooms_file, 'r', encoding='utf-8') as f:
-                rooms_data = json.load(f)
-                # Adapter la structure des données des salles
-                if 'rooms' in rooms_data:
-                    self.rooms = []
-                    for room in rooms_data['rooms']:
-                        adapted_room = {
-                            'id': room['_id'],
-                            'nom': room['name'],
-                            'capacite': room['capacity'],
-                            'equipement': room.get('equipment', '')
-                        }
-                        self.rooms.append(adapted_room)
-                else:
-                    self.rooms = rooms_data
+        """Charge toutes les données via les services"""
+        self.schedules = self.file_service.load_schedules()
+        self.canonical_schedules = self.file_service.load_canonical_schedules()
+        self.room_assignments = self.file_service.load_room_assignments()
+        self.rooms = self.file_service.load_rooms()
+        self.prof_data = self.file_service.load_prof_data()
+        self.custom_courses = self.file_service.load_custom_courses()
 
     def force_sync_data(self):
-        """Force la synchronisation des données avec un verrouillage pour éviter les conflits entre workers."""
-        import time
-        import fcntl
-        
-        lock_file = "data/.sync_lock"
-        max_wait = 5  # Attendre maximum 5 secondes
-        
-        try:
-            # Créer le répertoire data s'il n'existe pas
-            os.makedirs("data", exist_ok=True)
-            
-            # Essayer d'acquérir le verrou
-            with open(lock_file, 'w') as lock:
-                start_time = time.time()
-                while time.time() - start_time < max_wait:
-                    try:
-                        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                        break
-                    except (IOError, OSError):
-                        time.sleep(0.1)
-                        continue
-                else:
-                    # Timeout - on continue sans verrou
-                    print("Warning: Impossible d'acquérir le verrou de synchronisation")
-                    self.reload_data()
-                    return True
-                
-                try:
-                    # Recharger les données avec le verrou
-                    self.reload_data()
-                    
-                    # Créer un fichier de timestamp pour indiquer la dernière synchronisation
-                    sync_file = "data/.last_sync"
-                    with open(sync_file, 'w') as f:
-                        f.write(str(time.time()))
-                    
-                    return True
-                finally:
-                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
-                    
-        except Exception as e:
-            print(f"Erreur lors de la synchronisation forcée: {e}")
-            # Fallback vers le rechargement simple
-            return self.reload_data()
+        """Force la synchronisation via le service"""
+        return self.file_service.force_sync_data_with_lock(self.load_data)
 
     def reload_data(self):
-        """Force le rechargement des données depuis les fichiers."""
+        """Force le rechargement via load_data et invalide le cache"""
         try:
-            # Recharger les emplois du temps canoniques
-            if os.path.exists(self.canonical_schedule_file):
-                with open(self.canonical_schedule_file, 'r', encoding='utf-8') as f:
-                    self.canonical_schedules = json.load(f)
-            
-            # Recharger les attributions de salles
-            if os.path.exists(self.assignments_file):
-                with open(self.assignments_file, 'r', encoding='utf-8') as f:
-                    self.room_assignments = json.load(f)
-            
-            # Recharger les cours personnalisés
-            if os.path.exists(self.custom_courses_file):
-                with open(self.custom_courses_file, 'r', encoding='utf-8') as f:
-                    self.custom_courses = json.load(f)
-            
-            # Invalider le cache des salles occupées
+            self.load_data()
             _invalidate_occupied_rooms_cache()
-            
             return True
         except Exception as e:
             print(f"Erreur lors du rechargement des données: {e}")
             return False
 
     def get_prof_color(self, prof_name: str) -> str:
-        """Récupère la couleur d'un prof, ou en assigne une nouvelle."""
-        if prof_name in self.prof_data and 'color' in self.prof_data[prof_name]:
-            return self.prof_data[prof_name]['color']
-        
-        # Assigner une couleur par défaut si aucune n'est trouvée
-        color_index = hash(prof_name) % len(PROF_COLORS)
-        new_color = PROF_COLORS[color_index]
-        
-        # Mettre à jour la structure de données et la sauvegarder
-        if prof_name not in self.prof_data:
-            self.prof_data[prof_name] = {}
-        self.prof_data[prof_name]['color'] = new_color
-        
-        self.save_prof_data()
-        return new_color
+        """Récupère la couleur d'un prof via le service"""
+        color = self.professor_service.get_prof_color(prof_name, self.prof_data)
+        self.prof_data = self.file_service.load_prof_data()  # Sync cache
+        return color
 
     def update_prof_color(self, prof_name: str, color: str) -> bool:
-        """Met à jour la couleur d'un professeur."""
-        if color not in PROF_COLORS:
-            return False # Couleur invalide
-            
-        if prof_name not in self.prof_data:
-            self.prof_data[prof_name] = {}
-        
-        self.prof_data[prof_name]['color'] = color
-        self.save_prof_data()
-        return True
+        """Met à jour la couleur d'un professeur via le service"""
+        result = self.professor_service.update_prof_color(prof_name, color, self.prof_data)
+        self.prof_data = self.file_service.load_prof_data()  # Sync cache
+        return result
 
     def save_prof_data(self):
-        """Sauvegarde le fichier de données des professeurs."""
-        with open(self.prof_data_file, 'w', encoding='utf-8') as f:
-            json.dump(self.prof_data, f, indent=2, ensure_ascii=False)
+        """Sauvegarde via le service"""
+        self.file_service.save_prof_data(self.prof_data)
 
     def get_canonical_schedules_summary(self):
-        """Calcule un résumé des heures de cours pour chaque prof."""
-        summary = {}
-        normalized_profs = {}
-        
-        # Normaliser les noms et regrouper les cours
-        for prof, prof_data in self.canonical_schedules.items():
-            normalized_name = normalize_professor_name(prof)
-            
-            if normalized_name not in normalized_profs:
-                normalized_profs[normalized_name] = []
-            
-            courses = prof_data['courses'] if isinstance(prof_data, dict) else prof_data
-            normalized_profs[normalized_name].extend(courses)
-        
-        # Calculer les résumés pour les noms normalisés
-        for prof, courses in normalized_profs.items():
-            total_hours = sum(c.get('duration_hours', 0) for c in courses)
-            
-            days_summary = {}
-            for day in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']:
-                day_hours = sum(c.get('duration_hours', 0) for c in courses if c.get('day') == day)
-                if day_hours > 0:
-                    days_summary[day] = f"{day_hours:.1f}h"
-
-            summary[prof] = {
-                'total_hours': f"{total_hours:.1f}h",
-                'days': days_summary,
-                'color': self.get_prof_color(prof)
-            }
-        # Tri alphabétique des professeurs
-        sorted_summary = dict(sorted(summary.items()))
-        return sorted_summary
+        """Calcule un résumé via le service"""
+        return self.professor_service.get_canonical_schedules_summary(self.canonical_schedules, self.prof_data)
 
     def add_professor(self, prof_name: str) -> bool:
-        """Ajoute un nouveau professeur avec un emploi du temps vide."""
-        if prof_name in self.canonical_schedules:
-            return False  # Le professeur existe déjà
-        
-        self.canonical_schedules[prof_name] = {'courses': [], 'color': None, 'preferences': {}}
-        
-        # Auto-générer ID
-        prof_id = hashlib.md5(prof_name.encode()).hexdigest()[:8]
-        prof_id_mapping_file = "data/prof_id_mapping.json"
-        
-        # Charger et mettre à jour le mapping des IDs
-        if os.path.exists(prof_id_mapping_file):
-            with open(prof_id_mapping_file, "r", encoding="utf-8") as f:
-                prof_id_mapping = json.load(f)
-        else:
-            prof_id_mapping = {}
-        
-        prof_id_mapping[prof_name] = prof_id
-        
-        with open(prof_id_mapping_file, "w", encoding="utf-8") as f:
-            json.dump(prof_id_mapping, f, indent=2, ensure_ascii=False)
-        
-        # Sauvegarder les modifications du canonical_schedules
-        with open(self.canonical_schedule_file, 'w', encoding='utf-8') as f:
-            json.dump(self.canonical_schedules, f, indent=2, ensure_ascii=False)
-        return True
+        """Ajoute un nouveau professeur via le service"""
+        result = self.professor_service.add_professor(prof_name, self.canonical_schedules)
+        self.canonical_schedules = self.file_service.load_canonical_schedules()  # Sync cache
+        return result
 
     def delete_professor(self, prof_name: str) -> bool:
-        """Supprime un professeur et son emploi du temps."""
-        if prof_name in self.canonical_schedules:
-            del self.canonical_schedules[prof_name]
-            # Sauvegarder les modifications
-            with open(self.canonical_schedule_file, 'w', encoding='utf-8') as f:
-                json.dump(self.canonical_schedules, f, indent=2, ensure_ascii=False)
-            return True
-        return False  # Le professeur n'a pas été trouvé
+        """Supprime un professeur via le service"""
+        result = self.professor_service.delete_professor(prof_name, self.canonical_schedules)
+        self.canonical_schedules = self.file_service.load_canonical_schedules()  # Sync cache
+        return result
 
     def get_prof_schedule(self, prof_name: str) -> List[Dict]:
-        """Récupère l'emploi du temps canonique d'un professeur."""
-        prof_data = self.canonical_schedules.get(prof_name, {})
-        return prof_data.get('courses', []) if isinstance(prof_data, dict) else prof_data
+        """Récupère l'emploi du temps canonique via le service"""
+        return self.professor_service.get_prof_schedule(prof_name, self.canonical_schedules)
 
     def update_prof_schedule(self, prof_name: str, courses: List[Dict]):
-        """Met à jour l'emploi du temps canonique d'un professeur."""
-        if prof_name not in self.canonical_schedules:
-            self.canonical_schedules[prof_name] = {'courses': [], 'color': None, 'preferences': {}}
-        self.canonical_schedules[prof_name]['courses'] = courses
-        with open(self.canonical_schedule_file, 'w', encoding='utf-8') as f:
-            json.dump(self.canonical_schedules, f, indent=2, ensure_ascii=False)
-        return True
+        """Met à jour l'emploi du temps canonique via le service"""
+        result = self.professor_service.update_prof_schedule(prof_name, courses, self.canonical_schedules)
+        self.canonical_schedules = self.file_service.load_canonical_schedules()  # Sync cache
+        return result
 
     def get_all_courses(self) -> List[ProfessorCourse]:
-        """Récupère tous les cours (basé sur les emplois du temps canoniques)."""
-        courses = []
-        
-        # Générer les semaines académiques pour créer des cours pour chaque semaine
-        def generate_academic_weeks():
-            weeks = []
-            is_type_A = True
-            for week_num in range(36, 53):
-                week_type = "A" if is_type_A else "B"
-                weeks.append(f"Semaine {week_num} {week_type}")
-                is_type_A = not is_type_A
-            for week_num in range(1, 36):
-                week_type = "A" if is_type_A else "B"
-                weeks.append(f"Semaine {week_num:02d} {week_type}")
-                is_type_A = not is_type_A
-            return weeks
-        
-        academic_weeks = generate_academic_weeks()
-        
-        # Pour chaque professeur et chaque semaine, créer les cours
-        for prof_name, prof_courses in self.canonical_schedules.items():
-            for week_name in academic_weeks:
-                for i, course_data in enumerate(prof_courses['courses']):
-                    # L'ID doit être unique et déterministe
-                    raw_id = f"{week_name}_{prof_name}_{course_data['raw_time_slot']}_{i}"
-                    course_id = f"course_{hashlib.md5(raw_id.encode()).hexdigest()[:16]}"
-                    
-                    # Utiliser l'attribution sauvegardée si elle existe
-                    assigned_room = self.room_assignments.get(course_id, course_data.get('assigned_room'))
-                    
-                    course = ProfessorCourse(
-                        professor=prof_name,
-                        start_time=course_data['start_time'],
-                        end_time=course_data['end_time'],
-                        duration_hours=course_data['duration_hours'],
-                        course_type=course_data['course_type'],
-                        nb_students=course_data['nb_students'],
-                        assigned_room=assigned_room,
-                        day=course_data['day'],
-                        raw_time_slot=course_data['raw_time_slot'],
-                        week_name=week_name,
-                        course_id=course_id
-                    )
-                    courses.append(course)
-        
-        # Ajouter les cours personnalisés à la liste
-        for custom_course in self.custom_courses:
-            course_id = custom_course['course_id']
-            assigned_room = self.room_assignments.get(course_id)
-            
-            course = ProfessorCourse(
-                professor=custom_course['professor'],
-                start_time=custom_course['start_time'],
-                end_time=custom_course['end_time'],
-                duration_hours=custom_course['duration_hours'],
-                course_type=custom_course['course_type'],
-                nb_students=custom_course.get('nb_students', 'N/A'),
-                assigned_room=assigned_room,
-                day=custom_course['day'],
-                raw_time_slot=custom_course['raw_time_slot'],
-                week_name=custom_course['week_name'],
-                course_id=course_id
-            )
-            courses.append(course)
-        
-        return courses
+        """Récupère tous les cours via le service"""
+        return self.data_service.get_all_courses(self.canonical_schedules, self.custom_courses, self.room_assignments)
     
     def assign_room(self, course_id: str, room_id: str) -> bool:
-        """
-        Attribue une salle à un cours
-        
-        Args:
-            course_id: Identifiant du cours
-            room_id: Identifiant de la salle
-            
-        Returns:
-            True si l'attribution a réussi
-        """
+        """Attribue une salle via le service"""
         try:
+            from services.room_conflict_service import RoomConflictService
             # Vérifier les conflits
-            if self.check_room_conflict(course_id, room_id):
+            if RoomConflictService.check_room_conflict(course_id, room_id, self.get_all_courses()):
                 return False
-            
+
             # Attribuer la salle
-            self.room_assignments[course_id] = room_id
-            
-            # Sauvegarder
-            self.save_assignments()
-            
-            return True
-            
+            result = self.data_service.assign_room_to_course(course_id, room_id)
+            self.room_assignments = self.file_service.load_room_assignments()  # Sync cache
+            return bool(result)
+
         except Exception as e:
             print(f"❌ Erreur lors de l'attribution: {e}")
             return False
     
     def check_room_conflict(self, course_id: str, room_id: str) -> bool:
-        """
-        Vérifie s'il y a un conflit de salle
-        
-        Args:
-            course_id: Identifiant du cours
-            room_id: Identifiant de la salle
-            
-        Returns:
-            True s'il y a un conflit
-        """
-        courses = self.get_all_courses()
-        current_course = None
-        
-        # Trouver le cours actuel
-        for course in courses:
-            if course.course_id == course_id:
-                current_course = course
-                break
-        
-        if not current_course:
-            return True  # Cours non trouvé = conflit
-        
-        # Vérifier les autres cours
-        for course in courses:
-            if (course.course_id != course_id and 
-                course.assigned_room == room_id and
-                course.week_name == current_course.week_name and
-                course.day == current_course.day):
-                
-                # Vérifier le chevauchement horaire
-                if self.times_overlap(
-                    current_course.start_time, current_course.end_time,
-                    course.start_time, course.end_time
-                ):
-                    return True  # Conflit détecté
-        
-        return False  # Pas de conflit
+        """Vérifie les conflits via le service"""
+        from services.room_conflict_service import RoomConflictService
+        return RoomConflictService.check_room_conflict(course_id, room_id, self.get_all_courses())
     
 
     def check_room_conflict_detailed(self, course_id: str, room_id: str) -> dict:
-        """Vérifie s'il y a un conflit de salle avec détails"""
-        courses = self.get_all_courses()
-        current_course = None
-        conflicts = []
-        
-        # Trouver le cours actuel
-        for course in courses:
-            if course.course_id == course_id:
-                current_course = course
-                break
-        
-        if not current_course:
-            return {
-                'has_conflict': True,
-                'conflicts': [{'type': 'course_not_found', 'message': 'Cours non trouvé'}]
-            }
-        
-        # Vérifier les autres cours
-        for course in courses:
-            if (course.course_id != course_id and 
-                course.assigned_room == room_id and
-                course.week_name == current_course.week_name and
-                course.day == current_course.day):
-                
-                # Vérifier le chevauchement horaire
-                if self.times_overlap(
-                    current_course.start_time, current_course.end_time,
-                    course.start_time, course.end_time
-                ):
-                    conflicts.append({
-                        'type': 'time_overlap',
-                        'conflicting_professor': course.professor,
-                        'conflicting_time': f"{course.start_time}-{course.end_time}",
-                        'conflicting_class': getattr(course, 'class_name', 'N/A'),
-                        'message': f"Conflit avec {course.professor} ({course.start_time}-{course.end_time})"
-                    })
-        
-        return {
-            'has_conflict': len(conflicts) > 0,
-            'conflicts': conflicts
-        }
+        """Vérifie les conflits détaillés via le service"""
+        from services.room_conflict_service import RoomConflictService
+        return RoomConflictService.check_room_conflict_detailed(course_id, room_id, self.get_all_courses())
 
     def times_overlap(self, start1: str, end1: str, start2: str, end2: str) -> bool:
         """Vérifie si deux créneaux horaires se chevauchent"""
