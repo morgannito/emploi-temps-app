@@ -1,0 +1,57 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_updated.txt
+    
+    - name: Run tests
+      run: |
+        pytest tests/ -v --tb=short
+    
+    - name: Security check
+      run: |
+        pip install safety bandit
+        safety check
+        bandit -r . -f json || true
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    
+    - name: Install quality tools
+      run: |
+        pip install black isort flake8
+    
+    - name: Code formatting check
+      run: |
+        black --check .
+        isort --check-only --profile black .
+        flake8 . --max-line-length=88 --extend-ignore=E203

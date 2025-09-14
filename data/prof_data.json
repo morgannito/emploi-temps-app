@@ -1,0 +1,257 @@
+{
+  "M Bogaert": {
+    "color": "#e57373",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Chemet snt": {
+    "color": "#81c784",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Clement": {
+    "color": "#64b5f6",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Gau SNT": {
+    "color": "#fff176",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Grand": {
+    "color": "#ffb74d",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Landelle": {
+    "color": "#ba68c8",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Masse": {
+    "color": "#4db6ac",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Moya": {
+    "color": "#f06292",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Radonde": {
+    "color": "#e57373",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Roba SNT": {
+    "color": "#81c784",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Sanchez": {
+    "color": "#64b5f6",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Sourioux SNT": {
+    "color": "#fff176",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Tripier": {
+    "color": "#ffb74d",
+    "preferences": {},
+    "status": "active"
+  },
+  "M Turcan": {
+    "color": "#ba68c8",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Barascud": {
+    "color": "#f06292",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Casenove": {
+    "color": "#a1887f",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Dewailly": {
+    "color": "#e57373",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Duffaud SNT": {
+    "color": "#81c784",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Duverniex": {
+    "color": "#64b5f6",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Hellouvry": {
+    "color": "#fff176",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Kaminski": {
+    "color": "#ffb74d",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Louvet": {
+    "color": "#ba68c8",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Martin": {
+    "color": "#4db6ac",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Navarro": {
+    "color": "#f06292",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Roglet": {
+    "color": "#a1887f",
+    "preferences": {},
+    "status": "active"
+  },
+  "Mme Roldan": {
+    "color": "#81c784",
+    "preferences": {},
+    "status": "active"
+  },
+  "Bogaert": {
+    "color": "#64b5f6"
+  },
+  "Chemet Snt": {
+    "color": "#a1887f"
+  },
+  "Gau Snt": {
+    "color": "#a1887f"
+  },
+  "Grand": {
+    "color": "#64b5f6"
+  },
+  "Landelle": {
+    "color": "#f06292"
+  },
+  "Masse": {
+    "color": "#64b5f6"
+  },
+  "Moya": {
+    "color": "#81c784"
+  },
+  "Moya Tstl Salle": {
+    "color": "#a1887f"
+  },
+  "Radonde": {
+    "color": "#64b5f6"
+  },
+  "Roba Snt": {
+    "color": "#a1887f"
+  },
+  "Sanchez": {
+    "color": "#ba68c8"
+  },
+  "Sourioux Snt": {
+    "color": "#a1887f"
+  },
+  "Tripier": {
+    "color": "#ba68c8"
+  },
+  "Turcan": {
+    "color": "#ba68c8"
+  },
+  "Barascud": {
+    "color": "#f06292"
+  },
+  "Casenove": {
+    "color": "#64b5f6"
+  },
+  "Dewailly": {
+    "color": "#4db6ac"
+  },
+  "Duffaud Snt": {
+    "color": "#a1887f"
+  },
+  "Duverniex": {
+    "color": "#a1887f"
+  },
+  "Hellouvry": {
+    "color": "#ba68c8"
+  },
+  "Kaminski": {
+    "color": "#64b5f6"
+  },
+  "Louvet": {
+    "color": "#64b5f6"
+  },
+  "Navarro": {
+    "color": "#64b5f6"
+  },
+  "Roglet": {
+    "color": "#f06292"
+  },
+  "Roglet Tstl Salle": {
+    "color": "#64b5f6"
+  },
+  "Roldan": {
+    "color": "#64b5f6"
+  },
+  "M Lore": {
+    "color": "#fff176",
+    "preferences": {},
+    "status": "active"
+  },
+  "Martin": {
+    "color": "#f06292"
+  },
+  "Semaine B Mme Barascud": {
+    "color": "#a1887f"
+  },
+  "Clement": {
+    "color": "#4db6ac"
+  },
+  "Lore": {
+    "color": "#f06292"
+  },
+  "Test": {
+    "color": "#ffb74d"
+  },
+  "Test_Prof_Suppression": {
+    "color": "#64b5f6"
+  },
+  "Test Professeur": {
+    "color": "#4db6ac"
+  },
+  "Thomas": {
+    "color": "#81c784"
+  },
+  "Prof Test Id": {
+    "color": "#f06292"
+  },
+  "Roba": {
+    "color": "#e57373"
+  },
+  "Mme THOMAS": {
+    "color": "#f06292"
+  },
+  "M Roba": {
+    "color": "#ba68c8"
+  },
+  "semaine B Mme Barascud": {
+    "color": "#e57373"
+  },
+  "test": {
+    "color": "#ffb74d"
+  }
+}

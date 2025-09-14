@@ -1,0 +1,1579 @@
+{
+  "M Bogaert": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "tp 1STL",
+        "nb_students": "12 / 12",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "TP 1G1",
+        "nb_students": "17/17",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP  2.6",
+        "nb_students": "17/18",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "Cours 1G1",
+        "nb_students": "34",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 2.11",
+        "nb_students": "18/17",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Chemet snt": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "SNT 2.5",
+        "nb_students": "16/18",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "SNT 2.6-2.9",
+        "nb_students": "17/18-18/17",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "SNT 2.13",
+        "nb_students": "18/18",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Gau SNT": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "SI/NSI 1G3  206",
+        "nb_students": "16/17",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "SNT 2.10",
+        "nb_students": "17/18",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "SI 1G3",
+        "nb_students": "33",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "SNT 2.1",
+        "nb_students": "16/15",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "OP SI 2.1",
+        "nb_students": "20",
+        "start_time": "15:00",
+        "end_time": "16:30",
+        "duration_hours": 1.5,
+        "assigned_room": null,
+        "raw_time_slot": "15h-16h30"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Grand": {
+    "courses": [
+      {
+        "day": "Jeudi",
+        "course_type": "TP 2.9",
+        "nb_students": "18/17",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours TG6",
+        "nb_students": "34",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 2.7",
+        "nb_students": "18/16",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 2.4",
+        "nb_students": "18/17",
+        "start_time": "13:00",
+        "end_time": "16:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-16h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Landelle": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP 1STL",
+        "nb_students": "12/12",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "TP OP BIOAC 2.1",
+        "nb_students": "13",
+        "start_time": "15:00",
+        "end_time": "16:30",
+        "duration_hours": 1.5,
+        "assigned_room": null,
+        "raw_time_slot": "15h-16h30"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "Cours TSTL",
+        "nb_students": "24",
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-10h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "Cours TSTL",
+        "nb_students": "24",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "cours 1STL",
+        "nb_students": "24",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "bts2 numerique 305",
+        "nb_students": "12",
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-10h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Masse": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "Cours TG6",
+        "nb_students": "29",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "TP 1G3",
+        "nb_students": "16/15",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP TG6",
+        "nb_students": "14/15",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP 2.5",
+        "nb_students": "18/16",
+        "start_time": "13:00",
+        "end_time": "16:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-16h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours 1G3",
+        "nb_students": "31",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours TG6",
+        "nb_students": "29",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Moya": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP 1STL  302",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "14:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-14h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP 1STL  302",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "TP 1STL 302",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP TSTL 302",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP TSTL 302",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "16:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-16h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP TSTL 302",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "Cours TSTL LV1",
+        "nb_students": "24",
+        "start_time": "11:00",
+        "end_time": "12:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "11h-12h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Radonde": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "Cours TG1/TG2",
+        "nb_students": "29",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP TG2",
+        "nb_students": "15/14",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP BTS1",
+        "nb_students": "12",
+        "start_time": "08:30",
+        "end_time": "10:00",
+        "duration_hours": 1.5,
+        "assigned_room": null,
+        "raw_time_slot": "8h30-10h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "cours TG1/TG2",
+        "nb_students": "29",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "Cours /TP TG7 SI",
+        "nb_students": "4",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Sanchez": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP 1G4",
+        "nb_students": "16",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP 1G4",
+        "nb_students": "16",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "TP 2.1",
+        "nb_students": "15/16",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP 2.3",
+        "nb_students": "18/16",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 2.2",
+        "nb_students": "20/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 2.4",
+        "nb_students": "17/18",
+        "start_time": "13:00",
+        "end_time": "16:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-16h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Sourioux SNT": {
+    "courses": [
+      {
+        "day": "Mardi",
+        "course_type": "SNT 2.12",
+        "nb_students": "18/18",
+        "start_time": "14:00",
+        "end_time": "16:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "14h-16h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Tripier": {
+    "courses": [
+      {
+        "day": "Mardi",
+        "course_type": "TP TG5",
+        "nb_students": "15",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "TP 2.10",
+        "nb_students": "18/17",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours TG7",
+        "nb_students": "32",
+        "start_time": "08:00",
+        "end_time": "09:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-9h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP 2.13",
+        "nb_students": "18/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP TG5-7",
+        "nb_students": "15",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "Cours TG7",
+        "nb_students": "32",
+        "start_time": "08:00",
+        "end_time": "09:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-9h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 2.7",
+        "nb_students": "16/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "TP TG5",
+        "nb_students": "17",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Turcan": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP TST2S2",
+        "nb_students": "26",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "Cours 1ST2S1",
+        "nb_students": "32",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "Cours TST2S2",
+        "nb_students": "26",
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-10h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "cours 1STL",
+        "nb_students": "24",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "Cours 1ST2S1",
+        "nb_students": "32/32/16/16",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "Cours 1ST2S1",
+        "nb_students": "32",
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-10h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "Cours TST2S2",
+        "nb_students": "26",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Barascud": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP BTS1 305",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "Cours BTS 1  305",
+        "nb_students": "12",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP BTS 2  305",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "ATELIER BTS 2  305",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "14:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-14h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Casenove": {
+    "courses": [
+      {
+        "day": "Mercredi",
+        "course_type": "TP 2.1",
+        "nb_students": "16/15",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP 2.11",
+        "nb_students": "18/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP OP SL",
+        "nb_students": "19",
+        "start_time": "15:00",
+        "end_time": "16:30",
+        "duration_hours": 1.5,
+        "assigned_room": null,
+        "raw_time_slot": "15h-16h30"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 2.2",
+        "nb_students": "18/20",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Dewailly": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP 2.8",
+        "nb_students": "18/18",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "TP 1G2",
+        "nb_students": "17/18",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP 2.6",
+        "nb_students": "18/17",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "Cours 1G2",
+        "nb_students": "35",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP 2.9",
+        "nb_students": "17/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 2.11",
+        "nb_students": "17/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Duffaud SNT": {
+    "courses": [
+      {
+        "day": "Mardi",
+        "course_type": "SNT 2.4",
+        "nb_students": "18/17",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "SNT 2.7",
+        "nb_students": "16/18",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "SNT 2.3",
+        "nb_students": "18/16",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Duverniex": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "Cours TG2",
+        "nb_students": "27",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP TG2",
+        "nb_students": "13/14",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP 2.5",
+        "nb_students": "16/18",
+        "start_time": "13:00",
+        "end_time": "16:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-16h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "Cours TG2",
+        "nb_students": "27",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours TG4",
+        "nb_students": "34",
+        "start_time": "08:00",
+        "end_time": "09:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-9h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP 2.12",
+        "nb_students": "18/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Hellouvry": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP 1G1",
+        "nb_students": "17/17",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP TT2S1",
+        "nb_students": "24",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "Cours TG5",
+        "nb_students": "31",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "Cours TTST2S1",
+        "nb_students": "24",
+        "start_time": "08:00",
+        "end_time": "09:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-9h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "1ST2S2",
+        "nb_students": "20",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP TTS2S1",
+        "nb_students": "24",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours 1G1",
+        "nb_students": "34",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours 1ST2S2",
+        "nb_students": "20",
+        "start_time": "15:00",
+        "end_time": "16:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-16h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "Cours TG3",
+        "nb_students": "34",
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-10h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP 1ST2S2",
+        "nb_students": "20",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Kaminski": {
+    "courses": [
+      {
+        "day": "Mardi",
+        "course_type": "TP 1ST2S2",
+        "nb_students": "20",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP 1ST2S1",
+        "nb_students": "16/16",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "Cours 1ST2S1",
+        "nb_students": "31-27",
+        "start_time": "08:00",
+        "end_time": "09:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-9h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Louvet": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP 2.8",
+        "nb_students": "18/18",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "TP 1G4",
+        "nb_students": "14",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP 2.13",
+        "nb_students": "18/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP TST2S1",
+        "nb_students": "24",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Martin": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP 1STL  306",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "TP OP BIOAC  306",
+        "nb_students": "11",
+        "start_time": "15:00",
+        "end_time": "16:33",
+        "duration_hours": 1.55,
+        "assigned_room": null,
+        "raw_time_slot": "15h-16h33"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP BTS1 305",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP 1STL  306",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "16:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-16h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "TP 1STL  305",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "BTS 2 semaine A 305",
+        "nb_students": "12",
+        "start_time": "10:00",
+        "end_time": "17:00",
+        "duration_hours": 7.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-17h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Navarro": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP TSTL",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "Cours TG3",
+        "nb_students": "34",
+        "start_time": "14:00",
+        "end_time": "15:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "14h-15h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "OP SL 2.1",
+        "nb_students": "20",
+        "start_time": "15:00",
+        "end_time": "16:30",
+        "duration_hours": 1.5,
+        "assigned_room": null,
+        "raw_time_slot": "15h-16h30"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "TP 2.10",
+        "nb_students": "17/18",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP 2.3",
+        "nb_students": "16/18",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP TSTL",
+        "nb_students": "24",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Roglet": {
+    "courses": [
+      {
+        "day": "Mardi",
+        "course_type": "TP BTS 2 306",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "TP BTS1 306",
+        "nb_students": "12",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "9h-12h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "ATELIER BTS 2  306",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "14:30",
+        "duration_hours": 1.5,
+        "assigned_room": null,
+        "raw_time_slot": "13h-14h30"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP TSTL 306",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "TP TSTL 306",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "16:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-16h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TP Cours TSTL 306",
+        "nb_students": "12",
+        "start_time": "08:00",
+        "end_time": "11:00",
+        "duration_hours": 3.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-11h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "BLOC BTS1 306",
+        "nb_students": "12",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme Roldan": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "TP 1G2",
+        "nb_students": "17/17",
+        "start_time": "13:00",
+        "end_time": "17:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-17h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "TP TG3",
+        "nb_students": "11/18",
+        "start_time": "08:00",
+        "end_time": "12:00",
+        "duration_hours": 4.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours 1G2",
+        "nb_students": "34",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "Cours TG3",
+        "nb_students": "29",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "Cours TG3",
+        "nb_students": "29",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Lore": {
+    "courses": [
+      {
+        "day": "Jeudi",
+        "course_type": "TP TST2S2",
+        "nb_students": "26",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "Cours TST2S2",
+        "nb_students": "26",
+        "start_time": "13:00",
+        "end_time": "14:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-14h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "semaine B Mme Barascud": {
+    "courses": [],
+    "color": null,
+    "preferences": {}
+  },
+  "Mme THOMAS": {
+    "courses": [
+      {
+        "day": "Mercredi",
+        "course_type": "TSTL",
+        "nb_students": "24 eleve ",
+        "start_time": "11:00",
+        "end_time": "12:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "11h-12h"
+      },
+      {
+        "day": "Vendredi",
+        "course_type": "TSTL",
+        "nb_students": "24",
+        "start_time": "15:00",
+        "end_time": "16:00",
+        "duration_hours": 1.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-16h"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  },
+  "M Roba": {
+    "courses": [
+      {
+        "day": "Lundi",
+        "course_type": "SI/NSI TG7",
+        "nb_students": "4",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "SI/NSI TG2",
+        "nb_students": "7",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Lundi",
+        "course_type": "SI/NSI 1G3 ORDI",
+        "nb_students": "13",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "SI/NSI TG7",
+        "nb_students": "4",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "SI/NSI TG2",
+        "nb_students": "7",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Mardi",
+        "course_type": "SI/NSI 1G3 ORDI",
+        "nb_students": "13",
+        "start_time": "15:00",
+        "end_time": "17:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "15h-17h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "SI/NSI TG2",
+        "nb_students": "7",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "8h-10h"
+      },
+      {
+        "day": "Mercredi",
+        "course_type": "SNT 2.8",
+        "nb_students": "18/18",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "10h-12h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "SI TG7",
+        "nb_students": "7",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "duration_hours": 2.0,
+        "assigned_room": null,
+        "raw_time_slot": "13h-15h"
+      },
+      {
+        "day": "Jeudi",
+        "course_type": "OP SI 2.1",
+        "nb_students": "20",
+        "start_time": "15:00",
+        "end_time": "16:30",
+        "duration_hours": 1.5,
+        "assigned_room": null,
+        "raw_time_slot": "15h-16h30"
+      }
+    ],
+    "color": null,
+    "preferences": {}
+  }
+}

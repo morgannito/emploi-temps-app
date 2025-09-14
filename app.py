@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Application Flask refactorisée avec architecture par contrôleurs
-Gestion des emplois du temps et attribution de salles
+Application Flask - Gestion des emplois du temps
+Architecture moderne avec contrôleurs et logging professionnel
 """
 
 from flask import Flask
