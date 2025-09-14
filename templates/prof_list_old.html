@@ -98,7 +98,7 @@
                     <strong>Semanies avec cours :</strong>
                     <div class="week-links">
                         {% for week in weeks %}
-                        <a href="{{ url_for('edit_schedule', week_name=week, prof_name=prof_name) }}">{{ week }}</a>
+                        <a href="{{ url_for('professors.edit_schedule', week_name=week, prof_name=prof_name) }}">{{ week }}</a>
                         {% endfor %}
                     </div>
                 </div>

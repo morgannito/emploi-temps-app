@@ -680,10 +680,10 @@
         </div>
 
         <div class="toolbar">
-            <a href="{{ url_for('admin', week_name=week_name) }}" class="btn btn-back">← Retour à la vue semaine</a>
+            <a href="{{ url_for('planning.admin', week_name=week_name) }}" class="btn btn-back">← Retour à la vue semaine</a>
             <div style="display: flex; gap: 15px; align-items: center;">
                 <div style="display: flex; gap: 10px;">
-                    <a href="{{ url_for('export_week_pdf', week_name=week_name) }}" class="btn btn-export">📄 Exporter PDF</a>
+                    <a href="{{ url_for('planning.export_week_pdf', week_name=week_name) }}" class="btn btn-export">📄 Exporter PDF</a>
                 </div>
             </div>
         </div>

@@ -41,14 +41,14 @@
 </head>
 <body>
     <div class="container">
-        <a href="{{ url_for('admin') }}" class="nav-back">← Retour à l'attribution des salles</a>
+        <a href="{{ url_for('planning.admin') }}" class="nav-back">← Retour à l'attribution des salles</a>
         
         <div class="header">
             <h1>Horaires des Professeurs</h1>
             <p>Vue d'ensemble des heures de cours hebdomadaires par professeur.</p>
             
             <div class="quick-access">
-                <a href="{{ url_for('export_week_pdf', week_name='Semaine 37 B') }}" class="quick-btn">📄 Exporter PDF</a>
+                <a href="{{ url_for('planning.export_week_pdf', week_name='Semaine 37 B') }}" class="quick-btn">📄 Exporter PDF</a>
             </div>
         </div>
 
@@ -106,7 +106,7 @@
                 </div>
                 
                 <!-- Bouton édition -->
-                <a href="{{ url_for('edit_schedule', prof_name=prof_name, week_name='*') }}" 
+                <a href="{{ url_for('professors.edit_schedule', prof_name=prof_name, week_name='*') }}" 
                    class="btn-edit">
                    ✏️ Éditer emploi du temps
                 </a>

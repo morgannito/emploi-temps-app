@@ -321,7 +321,7 @@
                         <strong>\u00c9dition par semaine :</strong>
                         <div class="week-links">
                             {% for week in weeks %}
-                            <a href="{{ url_for('edit_schedule', week_name=week, prof_name=prof_name) }}" 
+                            <a href="{{ url_for('professors.edit_schedule', week_name=week, prof_name=prof_name) }}" 
                                class="week-link">{{ week }}</a>
                             {% endfor %}
                         </div>

@@ -344,17 +344,17 @@
                 <label for="week-select">Choisir une semaine :</label>
                 <select id="week-select" onchange="location = this.value;">
                     {% for week in all_weeks %}
-                    <option value="{{ url_for('admin', week_name=week.name) }}" {% if week.name == current_week %}selected{% endif %}>
+                    <option value="{{ url_for('planning.admin', week_name=week.name) }}" {% if week.name == current_week %}selected{% endif %}>
                         {{ week.full_name }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
             <div style="display: flex; gap: 15px; align-items: center;">
-                <a href="{{ url_for('list_professors_overview_minimal') }}" class="btn btn-edit-schedules">✏️ Modifier les Horaires des Profs</a>
-                <a href="{{ url_for('student_view') }}" class="btn" style="background: #27ae60; color: white;">📱 Vue Étudiants</a>
-                <a href="{{ url_for('student_view', week_name=current_week, show_selector='true') }}" class="btn" style="background: #8e44ad; color: white;" title="Ouvre la vue étudiante avec les filtres de jour et période activés pour la semaine en cours.">📱 Vue Étudiants (Paramètres)</a>
-                <a href="{{ url_for('export_week_pdf', week_name=current_week) }}" class="btn" style="background: #e74c3c; color: white;">📄 Exporter PDF</a>
+                <a href="{{ url_for('professors.list_professors_overview') }}" class="btn btn-edit-schedules">✏️ Modifier les Horaires des Profs</a>
+                <a href="{{ url_for('planning.student_view') }}" class="btn" style="background: #27ae60; color: white;">📱 Vue Étudiants</a>
+                <a href="{{ url_for('planning.student_view', week_name=current_week, show_selector='true') }}" class="btn" style="background: #8e44ad; color: white;" title="Ouvre la vue étudiante avec les filtres de jour et période activés pour la semaine en cours.">📱 Vue Étudiants (Paramètres)</a>
+                <a href="{{ url_for('planning.export_week_pdf', week_name=current_week) }}" class="btn" style="background: #e74c3c; color: white;">📄 Exporter PDF</a>
             </div>
         </div>
 
@@ -365,7 +365,7 @@
             <!-- En-têtes des jours -->
             {% for day in days_order %}
             <div class="day-header">
-                <a href="{{ url_for('day_view', week_name=current_week, day_name=day) }}" 
+                <a href="{{ url_for('planning.day_view', week_name=current_week, day_name=day) }}" 
                    style="color: white; text-decoration: none; display: block; padding: 5px; border-radius: 3px; transition: background-color 0.2s;"
                    onmouseover="this.style.backgroundColor='rgba(255,255,255,0.2)'"
                    onmouseout="this.style.backgroundColor='transparent'"

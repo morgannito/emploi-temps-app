@@ -34,13 +34,13 @@
 </head>
 <body>
     <div class="container">
-        <a href="{{ url_for('admin') }}" class="nav-back">← Retour à l'attribution des salles</a>
+        <a href="{{ url_for('planning.admin') }}" class="nav-back">← Retour à l'attribution des salles</a>
         <div class="header">
             <h1>Horaires des Professeurs</h1>
             <p>Vue d'ensemble des heures de cours hebdomadaires par professeur.</p>
             <div style="margin-top: 20px;">
-                <a href="{{ url_for('export_week_pdf', week_name='Semaine 36 A') }}" class="btn" style="background: #e74c3c; color: white; padding: 12px 20px; font-size: 1.1em;">📄 Exporter PDF Semaine 36A</a>
-                <a href="{{ url_for('export_week_pdf', week_name='Semaine 37 B') }}" class="btn" style="background: #e67e22; color: white; padding: 12px 20px; font-size: 1.1em;">📄 Exporter PDF Semaine 37B</a>
+                <a href="{{ url_for('planning.export_week_pdf', week_name='Semaine 36 A') }}" class="btn" style="background: #e74c3c; color: white; padding: 12px 20px; font-size: 1.1em;">📄 Exporter PDF Semaine 36A</a>
+                <a href="{{ url_for('planning.export_week_pdf', week_name='Semaine 37 B') }}" class="btn" style="background: #e67e22; color: white; padding: 12px 20px; font-size: 1.1em;">📄 Exporter PDF Semaine 37B</a>
             </div>
         </div>
 
@@ -75,7 +75,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                <a href="{{ url_for('edit_schedule', prof_name=prof_name_mapping[prof]) }}" class="btn-edit">Modifier l'emploi du temps</a>
+                <a href="{{ url_for('professors.edit_schedule', prof_name=prof_name_mapping[prof]) }}" class="btn-edit">Modifier l'emploi du temps</a>
             </div>
             {% endif %}
             {% else %}
