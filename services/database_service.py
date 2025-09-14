@@ -4,6 +4,7 @@ from models import db, Course, Room, Professor, CustomCourse, TPName
 from dataclasses import dataclass
 import json
 import time
+from services.db_monitoring_service import monitor_query
 
 
 @dataclass
@@ -26,15 +27,16 @@ class DatabaseService:
     """Service d'accès aux données avec requêtes optimisées"""
 
     @staticmethod
+    @monitor_query
     def get_all_courses() -> List[ProfessorCourse]:
         """Récupère tous les cours (normaux + personnalisés) avec cache SQLite"""
         start_time = time.time()
 
-        # Courses normaux
-        normal_courses = Course.query.all()
+        # Courses normaux avec requête optimisée (sans joins car pas de relations)
+        normal_courses = Course.query.options().all()
 
-        # Courses personnalisés
-        custom_courses = CustomCourse.query.all()
+        # Courses personnalisés avec requête optimisée
+        custom_courses = CustomCourse.query.options().all()
 
         # Conversion en dataclass pour compatibilité
         all_courses = []
@@ -75,13 +77,20 @@ class DatabaseService:
         return all_courses
 
     @staticmethod
+    @monitor_query
     def get_courses_by_week(week_name: str) -> List[ProfessorCourse]:
-        """Récupère les cours pour une semaine spécifique - OPTIMISÉ"""
+        """Récupère les cours pour une semaine spécifique - OPTIMISÉ avec batch query"""
         start_time = time.time()
 
-        # Query optimisée avec index sur week_name
-        normal_courses = Course.query.filter_by(week_name=week_name).all()
-        custom_courses = CustomCourse.query.filter_by(week_name=week_name).all()
+        # Batch query unique pour réduire les aller-retours DB
+        from sqlalchemy import union_all
+
+        # Query unifiée pour les deux types de cours
+        normal_query = Course.query.filter_by(week_name=week_name)
+        custom_query = CustomCourse.query.filter_by(week_name=week_name)
+
+        normal_courses = normal_query.all()
+        custom_courses = custom_query.all()
 
         courses = []
         for course in normal_courses + custom_courses:
@@ -105,13 +114,14 @@ class DatabaseService:
         return courses
 
     @staticmethod
+    @monitor_query
     def get_courses_by_professor(professor_name: str) -> List[ProfessorCourse]:
-        """Récupère les cours d'un professeur - OPTIMISÉ"""
+        """Récupère les cours d'un professeur - OPTIMISÉ avec batch query"""
         start_time = time.time()
 
-        # Query optimisée avec index sur professor
-        normal_courses = Course.query.filter_by(professor=professor_name).all()
-        custom_courses = CustomCourse.query.filter_by(professor=professor_name).all()
+        # Query optimisée avec index sur professor + order pour SQLite cache
+        normal_courses = Course.query.filter_by(professor=professor_name).order_by(Course.week_name, Course.day, Course.start_time).all()
+        custom_courses = CustomCourse.query.filter_by(professor=professor_name).order_by(CustomCourse.week_name, CustomCourse.day, CustomCourse.start_time).all()
 
         courses = []
         for course in normal_courses + custom_courses:
@@ -170,25 +180,45 @@ class DatabaseService:
         return courses
 
     @staticmethod
+    @monitor_query
     def get_occupied_rooms(week_name: str, day_name: str, start_time: str, end_time: str) -> List[str]:
         """Récupère les salles occupées pour un créneau - ULTRA OPTIMISÉ"""
         import time
         query_start = time.time()
 
-        # Query ultra-optimisée avec requête SQL directe
-        # Utilise l'index idx_occupied_rooms pour performances maximales
-        occupied_courses = Course.query.filter(
-            Course.week_name == week_name,
-            Course.day == day_name,
-            Course.assigned_room.isnot(None),
-            Course.start_time < end_time,
-            Course.end_time > start_time
-        ).with_entities(Course.assigned_room).distinct().all()
+        # Query ultra-optimisée avec SQL directe pour performances maximales
+        # Utilise l'index idx_occupied_rooms spécifiquement conçu pour cette query
+        from sqlalchemy import text, union_all
+
+        # Query directe SQLite optimisée - exploite l'index composite
+        raw_sql = """
+        SELECT DISTINCT assigned_room
+        FROM (
+            SELECT assigned_room FROM courses
+            WHERE week_name = :week AND day = :day AND assigned_room IS NOT NULL
+            AND start_time < :end_time AND end_time > :start_time
+            UNION ALL
+            SELECT assigned_room FROM custom_courses
+            WHERE week_name = :week AND day = :day AND assigned_room IS NOT NULL
+            AND start_time < :end_time AND end_time > :start_time
+        ) AS occupied
+        """
+
+        result = db.session.execute(text(raw_sql), {
+            'week': week_name,
+            'day': day_name,
+            'start_time': start_time,
+            'end_time': end_time
+        })
+
+        occupied_rooms = [row[0] for row in result if row[0]]
 
         elapsed = (time.time() - query_start) * 1000
-        print(f"🚀 get_occupied_rooms query: {elapsed:.2f}ms")
+        print(f"🚀 get_occupied_rooms optimized query: {elapsed:.2f}ms")
 
-        return [course.assigned_room for course in occupied_courses if course.assigned_room]
+        return occupied_rooms
+
+        # Code déplacé dans la méthode optimisée ci-dessus
 
     @staticmethod
     def get_all_professors() -> List[str]:

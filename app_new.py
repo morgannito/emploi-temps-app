@@ -36,10 +36,23 @@ from flask_caching import Cache
 
 app = Flask(__name__)
 
-# Configuration SQLite
+# Configuration SQLite optimisée
 db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'schedule.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Connection pooling et optimisations SQLAlchemy
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 20,
+    'max_overflow': 0,
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+    'echo': False,
+    'connect_args': {
+        'timeout': 20,
+        'check_same_thread': False
+    }
+}
 
 # Configuration Flask-Caching
 app.config['CACHE_TYPE'] = 'simple'  # En mémoire pour dev
@@ -1457,6 +1470,48 @@ def api_course_details(course_id):
                 'equipment': 'Standard',
                 'notes': 'Cours régulier'
             }
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/db_monitor')
+def db_monitor_stats():
+    """Route de monitoring des performances de base de données"""
+    try:
+        from services.db_monitoring_service import db_monitor
+
+        performance_summary = db_monitor.get_performance_summary()
+        database_info = db_monitor.get_database_info()
+        query_patterns = db_monitor.analyze_query_patterns()
+
+        return jsonify({
+            'success': True,
+            'performance': performance_summary,
+            'database': database_info,
+            'patterns': query_patterns,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/db_monitor/clear')
+def clear_db_monitor():
+    """Route pour vider les statistiques de monitoring"""
+    try:
+        from services.db_monitoring_service import db_monitor
+        db_monitor.clear_stats()
+
+        return jsonify({
+            'success': True,
+            'message': 'Statistiques de monitoring vidées'
         })
 
     except Exception as e:
