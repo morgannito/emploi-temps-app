@@ -21,8 +21,8 @@ max_requests = 500
 max_requests_jitter = 100
 
 # Logs détaillés pour le debugging
-accesslog = '/home/toto/app_emploie_du_temps_isa/logs/gunicorn_access.log'
-errorlog = '/home/toto/app_emploie_du_temps_isa/logs/gunicorn_error.log'
+accesslog = './logs/gunicorn_access.log'
+errorlog = './logs/gunicorn_error.log'
 loglevel = 'info'
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
@@ -48,9 +48,7 @@ secure_scheme_headers = {
 
 # Configuration pour la stabilité
 daemon = False
-pidfile = '/home/toto/app_emploie_du_temps_isa/logs/gunicorn.pid'
-user = 'toto'
-group = 'toto'
+pidfile = './logs/gunicorn.pid'
 
 # Callbacks pour le monitoring
 def on_starting(server):

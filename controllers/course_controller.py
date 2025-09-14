@@ -44,6 +44,7 @@ class CourseController(BaseController):
         self.blueprint.route('/duplicate', methods=['POST'])(self.duplicate_course)
         self.blueprint.route('/delete', methods=['POST'])(self.delete_course)
         self.blueprint.route('/update_tp_name', methods=['POST'])(self.update_tp_name)
+        self.blueprint.route('/add_tp_name', methods=['POST'])(self.add_tp_name)
         self.blueprint.route('/get_tp_names', methods=['GET'])(self.get_tp_names)
         self.blueprint.route('/delete_tp_name', methods=['POST'])(self.delete_tp_name)
         self.blueprint.route('', methods=['GET'])(self.get_courses_clean)
@@ -189,6 +190,30 @@ class CourseController(BaseController):
                 return self.success_response({'tp_name': data['tp_name']})
             else:
                 return self.error_response('Erreur lors de la sauvegarde', 500)
+
+        except Exception as e:
+            return self.error_response(str(e), 500)
+
+    @admin_required
+    def add_tp_name(self):
+        """API pour ajouter un nom de TP à un cours existant"""
+        data = self.get_json_data()
+
+        required_fields = ['course_id', 'tp_name']
+        validation_error = self.validate_required_fields(data, required_fields)
+        if validation_error:
+            return self.error_response(validation_error, 400)
+
+        try:
+            success = self.schedule_manager.save_tp_name(data['course_id'], data['tp_name'])
+
+            if success:
+                return self.success_response({
+                    'tp_name': data['tp_name'],
+                    'course_id': data['course_id']
+                })
+            else:
+                return self.error_response('Erreur lors de l\'ajout du TP', 500)
 
         except Exception as e:
             return self.error_response(str(e), 500)

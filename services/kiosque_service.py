@@ -14,12 +14,12 @@ class KiosqueService:
         """Détermine le nom de la semaine actuelle pour le kiosque"""
         today = datetime.now().date()
         week_num = today.isocalendar()[1]
-        if today.year == 2025 and week_num >= 36:
-            weeks_since_start = week_num - 36
-            is_type_A = (weeks_since_start % 2) == 0
+        if today.year == 2025 and week_num >= 37:
+            weeks_since_start = week_num - 37
+            is_type_A = (weeks_since_start % 2) != 0
             week_type = "A" if is_type_A else "B"
             return f"Semaine {week_num} {week_type}"
-        return "Semaine 37 A"  # Fallback
+        return "Semaine 38 A"  # Fallback
 
     @staticmethod
     def build_week_grid(week_courses, time_slots, schedule_manager) -> Dict:
@@ -140,7 +140,7 @@ class KiosqueService:
 
         day_translation = {
             'Monday': 'Lundi', 'Tuesday': 'Mardi', 'Wednesday': 'Mercredi',
-            'Thursday': 'Jeudi', 'Friday': 'Vendredi'
+            'Thursday': 'Jeudi', 'Friday': 'Vendredi', 'Saturday': 'Samedi', 'Sunday': 'Dimanche'
         }
         return day_translation.get(current_day, 'Lundi')
 

@@ -728,7 +728,7 @@
             // Préchargement en arrière-plan avec low priority
             setTimeout(() => {
                 toPreload.forEach(weekName => {
-                    fetch(`/spa/week/${encodeURIComponent(weekName)}`, {
+                    fetch(`/week/${encodeURIComponent(weekName)}`, {
                         priority: 'low',
                         cache: 'force-cache'
                     }).catch(() => {}); // Silent fail pour le préchargement
@@ -761,7 +761,7 @@
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
-                const response = await fetch(`/spa/week/${encodeURIComponent(weekName)}`, {
+                const response = await fetch(`/week/${encodeURIComponent(weekName)}`, {
                     signal: controller.signal,
                     headers: {
                         'Accept': 'text/html,application/xhtml+xml',
@@ -796,7 +796,7 @@
                     this.initializeExistingFeatures();
 
                     // Mettre à jour l'URL
-                    window.history.pushState({ week: weekName }, '', `/spa/week/${encodeURIComponent(weekName)}`);
+                    window.history.pushState({ week: weekName }, '', `/week/${encodeURIComponent(weekName)}`);
 
                     this.currentWeek = weekName;
 
@@ -872,11 +872,20 @@
         }
 
         initializeExistingFeatures() {
+            console.log('🚀 SPA: Initialisation des fonctionnalités...');
             // Réinitialiser toutes les fonctionnalités existantes
             this.initializeRoomSelection();
             this.bindModalEvents();
-            this.loadSavedTpNames();
+
+            // Forcer le chargement des TPs avec délai
+            setTimeout(() => {
+                console.log('⏰ SPA: Appel différé loadSavedTpNames');
+                this.loadSavedTpNames();
+            }, 500);
+
             this.bindDeleteTpButtons();
+
+            // Debug button retiré car les TPs fonctionnent maintenant
 
             // Vérifier si ScheduleManager existe (créé par admin.js)
             console.log('SPA: Checking ScheduleManager availability...');
@@ -930,17 +939,36 @@
 
         async loadSavedTpNames() {
             try {
+                console.log('🔍 SPA: Chargement des noms de TP...');
+
+                // Debug: lister tous les cours avec data-course-id
+                const allCourses = document.querySelectorAll('[data-course-id]');
+                console.log(`📊 SPA: ${allCourses.length} cours trouvés sur la page`);
+                allCourses.forEach((course, index) => {
+                    if (index < 5) console.log(`📄 SPA: Cours ${index + 1}: ${course.getAttribute('data-course-id')}`);
+                });
+
                 const response = await fetch('/api/courses/get_tp_names');
                 const result = await response.json();
+                console.log('📋 SPA: Réponse API:', result);
 
-                if (result.success && result.tp_names) {
+                if (result.success && result.data && result.data.tp_names) {
+                    const tpNames = result.data.tp_names;
+                    console.log(`🎯 SPA: ${Object.keys(tpNames).length} TPs à appliquer`);
+
                     // Appliquer les noms de TP
-                    Object.entries(result.tp_names).forEach(([courseId, tpName]) => {
+                    Object.entries(tpNames).forEach(([courseId, tpName]) => {
+                        console.log(`🔗 SPA: Recherche cours ${courseId} avec TP "${tpName}"`);
                         const courseElement = document.querySelector(`[data-course-id="${courseId}"]`);
+                        console.log(`📍 SPA: Élément trouvé:`, courseElement);
+
                         if (courseElement) {
+                            console.log(`✅ SPA: Application TP "${tpName}" au cours ${courseId}`);
                             const courseTypeElement = courseElement.querySelector('.course-type');
                             if (courseTypeElement) {
-                                courseTypeElement.innerHTML = `${courseTypeElement.textContent} <span class="tp-name">${tpName}<button class="btn-delete-tp" data-course-id="${courseId}" title="Supprimer le TP">✕</button></span>`;
+                                // Nettoyer d'abord les anciens TPs
+                                let cleanText = courseTypeElement.textContent.replace(/\s*<span class="tp-name".*?<\/span>/g, '');
+                                courseTypeElement.innerHTML = `${cleanText} <span class="tp-name" style="color: #e74c3c !important; font-weight: bold; background: rgba(231,76,60,0.1); padding: 2px 6px; border-radius: 3px; margin-left: 5px;">${tpName} <button class="btn-delete-tp" data-course-id="${courseId}" title="Supprimer le TP" style="background: none; border: none; color: #e74c3c; cursor: pointer; margin-left: 5px;">✕</button></span>`;
                                 courseElement.classList.add('has-tp');
                             }
                         }
@@ -1092,7 +1120,7 @@
                     if (mode === 'edit') {
                         // Mode édition : ajouter TP au cours existant
                         try {
-                            const response = await fetch('/api/courses/update_tp_name', {
+                            const response = await fetch('/api/courses/add_tp_name', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -1316,6 +1344,15 @@
         if (window.spaManager) {
             window.spaManager.initializeExistingFeatures();
         }
+
+        // Debug button retiré car les TPs fonctionnent maintenant
+
+        // Chargement automatique des TPs au démarrage
+        setTimeout(() => {
+            if (window.spaManager && window.spaManager.loadSavedTpNames) {
+                window.spaManager.loadSavedTpNames();
+            }
+        }, 800);
     });
     </script>
 </body>
