@@ -33,6 +33,7 @@ from models import db
 from services.database_service import DatabaseService
 from services.migration_service import MigrationService
 from flask_caching import Cache
+from infrastructure.config import configure_container
 
 app = Flask(__name__)
 
@@ -61,6 +62,12 @@ cache = Cache(app)
 
 # Initialiser la base de données
 db.init_app(app)
+
+# Configuration du container d'injection de dépendances
+configure_container(db)
+
+# Import des services applicatifs
+from application.services.course_application_service import CourseApplicationService
 
 # Désactiver le cache des templates en mode debug
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -382,11 +389,13 @@ from services.course_api_service import CourseAPIService
 from services.cache_service import CacheService
 from services.professor_api_service import ProfessorAPIService
 from services.room_api_service import RoomAPIService
+from application.services.course_application_service import CourseApplicationService
 
 course_api_service = CourseAPIService(schedule_manager)
 cache_service = CacheService()
 professor_api_service = ProfessorAPIService(schedule_manager)
 room_api_service = RoomAPIService(schedule_manager, cache_service)
+clean_course_service = CourseApplicationService()
 from services.professor_service import ProfessorService
 from services.planning_service import PlanningService
 from services.student_service import StudentService
@@ -1337,6 +1346,52 @@ def api_update_schedule_slot(day, room_id, slot_index):
             'error': str(e)
         }), 500
 
+
+# ==================== CLEAN ARCHITECTURE ENDPOINTS ====================
+
+@app.route('/api/courses', methods=['GET'])
+def get_courses_clean():
+    """Clean Architecture - Récupère tous les cours"""
+    try:
+        week_name = request.args.get('week', 'Semaine 37 B')
+        courses = clean_course_service.get_courses_by_week(week_name)
+
+        return jsonify({
+            'success': True,
+            'data': courses,
+            'count': len(courses),
+            'architecture': 'Clean Architecture with DDD'
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'architecture': 'Clean Architecture with DDD'
+        }), 500
+
+@app.route('/api/courses/room/<room_id>', methods=['GET'])
+def get_courses_by_room_clean(room_id):
+    """Clean Architecture - Récupère les cours d'une salle"""
+    try:
+        week_name = request.args.get('week', 'Semaine 37 B')
+        courses = clean_course_service.get_courses_by_room(room_id, week_name)
+
+        return jsonify({
+            'success': True,
+            'data': courses,
+            'count': len(courses),
+            'room_id': room_id,
+            'architecture': 'Clean Architecture with DDD'
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'architecture': 'Clean Architecture with DDD'
+        }), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5005) 
 # ==================== OPTIMISATIONS PLANNING V2 - FINAL ====================
@@ -1385,74 +1440,6 @@ def planning_v2_spa(week_name=None):
         return f"Erreur lors de la génération du calendrier: {str(e)}", 500
 
 
-# ROUTE SUPPRIMÉE - Doublon (voir route SPA principale ligne 1116)
-
-@app.route('/api/week_data/<week_name>')
-def api_week_data(week_name):
-    """API JSON optimisée pour le SPA - renvoie les données structurées"""
-    try:
-        start_time = time.time()
-
-        # Utiliser le service optimisé
-        courses = DatabaseService.get_courses_by_week(week_name)
-
-        # Transformer en format SPA optimisé
-        formatted_courses = []
-        time_slot_mapping = {
-            '08:00': '8h00-9h00',
-            '09:00': '9h00-10h00',
-            '10:00': '10h00-11h00',
-            '11:00': '11h00-12h00',
-            '12:00': '12h00-13h00',
-            '13:00': '13h00-14h00',
-            '14:00': '14h00-15h00',
-            '15:00': '15h00-16h00',
-            '16:00': '16h00-17h00',
-            '17:00': '17h00-18h00'
-        }
-
-        for course in courses:
-            # Déterminer le créneau horaire
-            time_slot = time_slot_mapping.get(course.start_time, course.raw_time_slot or f"{course.start_time}-{course.end_time}")
-
-            formatted_course = {
-                'course_id': course.course_id,
-                'professor': course.professor,
-                'course_type': course.course_type,
-                'day': course.day,
-                'time_slot': time_slot,
-                'start_time': course.start_time,
-                'end_time': course.end_time,
-                'duration_hours': course.duration_hours,
-                'nb_students': course.nb_students or '',
-                'assigned_room': course.assigned_room
-            }
-            formatted_courses.append(formatted_course)
-
-        elapsed = (time.time() - start_time) * 1000
-
-        response_data = {
-            'success': True,
-            'week_name': week_name,
-            'courses': formatted_courses,
-            'total_courses': len(formatted_courses),
-            'performance': {
-                'query_time_ms': round(elapsed, 2),
-                'courses_count': len(formatted_courses)
-            }
-        }
-
-        print(f"🚀 SPA API /api/week_data/{week_name}: {len(formatted_courses)} cours en {elapsed:.2f}ms")
-
-        return jsonify(response_data)
-
-    except Exception as e:
-        print(f"❌ Erreur SPA API week_data: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'week_name': week_name
-        }), 500
 
 @app.route('/api/course_details/<course_id>')
 def api_course_details(course_id):
@@ -1514,6 +1501,43 @@ def clear_db_monitor():
             'message': 'Statistiques de monitoring vidées'
         })
 
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# ==================== CLEAN ARCHITECTURE API ====================
+@app.route('/api/v2/courses/<week_name>')
+def api_v2_courses_by_week(week_name):
+    """API Clean Architecture - Récupère les cours par semaine"""
+    try:
+        course_service = CourseApplicationService()
+        courses = course_service.get_courses_by_week(week_name)
+
+        return jsonify({
+            'success': True,
+            'data': courses,
+            'architecture': 'clean-ddd'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/v2/courses/<course_id>/validate-schedule')
+def api_v2_validate_schedule(course_id):
+    """API Clean Architecture - Validation d'intégrité du planning"""
+    try:
+        course_service = CourseApplicationService()
+        conflicts = course_service.find_conflicting_courses(course_id)
+
+        return jsonify({
+            'success': True,
+            'conflicts': conflicts,
+            'has_conflicts': len(conflicts) > 0
+        })
     except Exception as e:
         return jsonify({
             'success': False,
