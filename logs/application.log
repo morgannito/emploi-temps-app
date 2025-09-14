@@ -657,3 +657,5 @@
 {'timestamp': '2025-09-14T22:06:56.399825', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 623, Courses with rooms: 487', 'function': 'admin', 'line': 92}
 {'timestamp': '2025-09-14T22:06:56.713677', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 118, 'execution_time_ms': 368.21484565734863}
 {'timestamp': '2025-09-14T22:06:56.872536', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 118, 'execution_time_ms': 468.5518741607666}
+{'timestamp': '2025-09-14T22:10:31.463528', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 118, 'execution_time_ms': 191.81108474731445}
+{'timestamp': '2025-09-14T22:10:31.513238', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'LOW SEVERITY ERROR', 'function': '_log_error', 'line': 96}
