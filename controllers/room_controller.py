@@ -2,6 +2,7 @@ from flask import request, jsonify
 from flask_caching import Cache
 from controllers.base_controller import BaseController
 from services.room_api_service import RoomAPIService
+from utils.logger import app_logger, log_room_conflict, log_database_operation
 
 
 class RoomController(BaseController):
@@ -30,26 +31,26 @@ class RoomController(BaseController):
             course_id = data.get('course_id')
             room_id = data.get('room_id')
 
-            print(f"🔧 DEBUG assign_room: course_id={course_id}, room_id={room_id}")
+            app_logger.info(f"Room assignment request: {course_id} -> {room_id}")
 
             if not course_id:
                 return self.error_response('Course ID manquant')
 
             # Si room_id est vide, on supprime l'attribution
             if not room_id:
-                print(f"🗑️ Suppression attribution pour course_id: {course_id}")
+                app_logger.info(f"Removing room assignment for course: {course_id}")
                 if course_id in self.schedule_manager.room_assignments:
                     del self.schedule_manager.room_assignments[course_id]
                     self.schedule_manager.save_assignments()
                     self.schedule_manager.force_sync_data()
-                    print(f"✅ Attribution supprimée pour {course_id}")
+                    app_logger.info(f"Room assignment removed successfully: {course_id}")
                 return self.success_response()
 
             # Vérifier les conflits avec détails
             conflict_details = self.schedule_manager.check_room_conflict_detailed(course_id, room_id)
 
             if conflict_details['has_conflict']:
-                print(f"⚠️ Conflit détecté pour {course_id} -> {room_id}: {conflict_details}")
+                log_room_conflict(course_id, room_id, f"Conflict: {conflict_details}")
                 return jsonify({
                     'success': False,
                     'error': 'Conflit de salle détecté',
@@ -57,12 +58,12 @@ class RoomController(BaseController):
                 })
 
             # Attribuer la salle
-            print(f"🏢 Tentative d'attribution: {course_id} -> {room_id}")
+            app_logger.debug(f"Attempting room assignment: {course_id} -> {room_id}")
             success = self.schedule_manager.assign_room(course_id, room_id)
-            print(f"📊 Résultat assign_room: {success}")
+            app_logger.debug(f"Assignment result: {success}")
 
             if success:
-                print(f"✅ Attribution réussie: {course_id} -> {room_id}")
+                app_logger.info(f"Room assignment successful: {course_id} -> {room_id}")
                 self.schedule_manager.force_sync_data()
                 self.cache_service.invalidate_occupied_rooms_cache()
 
@@ -71,22 +72,22 @@ class RoomController(BaseController):
                     self.schedule_manager.data_service.sync_room_assignments_to_db(
                         self.schedule_manager.room_assignments
                     )
-                    print("🔄 Synchronisation DB forcée")
+                    app_logger.info("Forced database synchronization")
                 except Exception as sync_error:
-                    print(f"⚠️ Erreur sync DB: {sync_error}")
+                    app_logger.error(f"Database sync error: {sync_error}")
 
                 # Vérification
-                print(f"🔍 Vérification: {course_id} dans assignments = {course_id in self.schedule_manager.room_assignments}")
+                app_logger.debug(f"Verification: course {course_id} in assignments = {course_id in self.schedule_manager.room_assignments}")
                 if course_id in self.schedule_manager.room_assignments:
-                    print(f"🎯 Salle assignée: {self.schedule_manager.room_assignments[course_id]}")
+                    app_logger.debug(f"Room assigned: {self.schedule_manager.room_assignments[course_id]}")
 
                 return self.success_response()
             else:
-                print(f"❌ Échec de l'attribution: {course_id} -> {room_id}")
+                app_logger.warning(f"Room assignment failed: {course_id} -> {room_id}")
                 return self.error_response('Erreur lors de l\'attribution')
 
         except Exception as e:
-            print(f"🔥 Exception dans assign_room: {str(e)}")
+            app_logger.error(f"Room assignment exception: {str(e)}")
             import traceback
             traceback.print_exc()
             return self.error_response(str(e), 500)
@@ -141,9 +142,9 @@ class RoomController(BaseController):
             if result is None:
                 result = self.room_api_service.get_occupied_rooms(data)
                 cache.set(cache_key, result, timeout=60)
-                print(f"🔥 Cache MISS pour {cache_key}")
+                app_logger.debug(f"Cache miss: {cache_key}")
             else:
-                print(f"⚡ Cache HIT pour {cache_key}")
+                app_logger.debug(f"Cache hit: {cache_key}")
         else:
             result = self.room_api_service.get_occupied_rooms(data)
 
@@ -170,7 +171,7 @@ class RoomController(BaseController):
             })
 
         except Exception as e:
-            print(f"❌ Erreur batch occupied rooms: {e}")
+            app_logger.error(f"Batch occupied rooms error: {e}")
             return self.error_response(str(e), 500)
 
     def get_free_rooms(self):
@@ -182,7 +183,7 @@ class RoomController(BaseController):
     def test_sync_db(self):
         """Route de test pour déclencher manuellement la synchronisation DB"""
         try:
-            print("🧪 TEST: Déclenchement de la synchronisation manuelle")
+            app_logger.info("Manual synchronization test triggered")
             updated_count = self.schedule_manager.data_service.sync_room_assignments_to_db(
                 self.schedule_manager.room_assignments
             )
@@ -192,7 +193,7 @@ class RoomController(BaseController):
             courses_with_rooms = len([c for c in all_courses if c.assigned_room])
             assignments_count = len(self.schedule_manager.room_assignments)
 
-            print(f"📊 RÉSUMÉ: {updated_count} cours mis à jour, {assignments_count} assignments JSON, {courses_with_rooms} cours avec salles en DB")
+            app_logger.info(f"Sync summary: {updated_count} courses updated, {assignments_count} assignments, {courses_with_rooms} courses with rooms")
 
             return self.success_response({
                 'updated_count': updated_count,
@@ -202,7 +203,7 @@ class RoomController(BaseController):
             })
 
         except Exception as e:
-            print(f"❌ TEST SYNC ERROR: {e}")
+            app_logger.error(f"Test sync error: {e}")
             import traceback
             traceback.print_exc()
             return self.error_response(str(e), 500)

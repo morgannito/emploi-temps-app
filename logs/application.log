@@ -1,0 +1,3 @@
+{'timestamp': '2025-09-14T10:14:16.474101', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Testing logging system', 'function': '<module>', 'line': 3}
+{'timestamp': '2025-09-14T10:15:31.903394', 'level': 'WARNING', 'module': 'emploi_temps', 'message': "Clean Architecture fallback for Semaine 37 B: 'Course' object has no attribute 'student_count'", 'function': 'get_courses_by_week', 'line': 52}
+{'timestamp': '2025-09-14T10:15:31.904110', 'level': 'ERROR', 'module': 'emploi_temps', 'message': "Legacy fallback failed: No module named 'services.scheduling_service'", 'function': 'get_courses_by_week', 'line': 83}

@@ -1,0 +1,38 @@
+# Requirements.txt mis à jour avec corrections de sécurité
+# Packages core avec versions sécurisées (Sep 2024)
+
+# Framework Flask - Critical security updates
+Flask==3.1.0
+Werkzeug==3.1.3
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+itsdangerous==2.2.0
+click==8.1.8
+blinker==1.9.0
+
+# Data processing - Security updates
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Production server - Critical CVE fixes
+gunicorn==23.0.0
+
+# Dates and timezone - Security patches
+python-dateutil==2.9.0
+pytz==2024.1
+
+# Dependencies - Updated for security
+six==1.17.0
+et-xmlfile==2.0.0
+
+# Development - Latest secure versions (optional)
+flask-caching==2.3.0
+reportlab==4.2.5
+
+# Testing - Updated (optional)
+pytest==8.3.3
+pytest-flask==1.3.0
+
+# Monitoring - New additions
+psutil==6.1.0
+python-json-logger==2.0.7

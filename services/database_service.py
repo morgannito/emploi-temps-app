@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import json
 import time
 from services.db_monitoring_service import monitor_query
+from utils.logger import app_logger, log_performance, log_database_operation
 
 
 @dataclass
@@ -72,7 +73,7 @@ class DatabaseService:
             ))
 
         end_time = time.time()
-        print(f"🔥 DB Query: {len(all_courses)} cours en {(end_time - start_time)*1000:.2f}ms")
+        log_database_operation("get_all_courses", "courses", (end_time - start_time)*1000)
 
         return all_courses
 
@@ -109,7 +110,7 @@ class DatabaseService:
             ))
 
         end_time = time.time()
-        print(f"🚀 DB Query week '{week_name}': {len(courses)} cours en {(end_time - start_time)*1000:.2f}ms")
+        log_database_operation(f"get_courses_by_week", "courses", (end_time - start_time)*1000)
 
         return courses
 
@@ -140,7 +141,7 @@ class DatabaseService:
             ))
 
         end_time = time.time()
-        print(f"🎯 DB Query prof '{professor_name}': {len(courses)} cours en {(end_time - start_time)*1000:.2f}ms")
+        log_database_operation(f"get_courses_by_professor", "courses", (end_time - start_time)*1000)
 
         return courses
 
@@ -175,7 +176,7 @@ class DatabaseService:
             ))
 
         end_time = time.time()
-        print(f"📅 DB Query {week_name}/{day_name}: {len(courses)} cours en {(end_time - start_time)*1000:.2f}ms")
+        log_database_operation(f"get_courses_by_week_day", "courses", (end_time - start_time)*1000)
 
         return courses
 
@@ -214,7 +215,7 @@ class DatabaseService:
         occupied_rooms = [row[0] for row in result if row[0]]
 
         elapsed = (time.time() - query_start) * 1000
-        print(f"🚀 get_occupied_rooms optimized query: {elapsed:.2f}ms")
+        log_database_operation("get_occupied_rooms", "courses", elapsed)
 
         return occupied_rooms
 
@@ -266,7 +267,7 @@ class DatabaseService:
             return True
         except Exception as e:
             db.session.rollback()
-            print(f"Erreur couleur prof: {e}")
+            app_logger.error(f"Professor color update error: {e}")
             return False
 
     @staticmethod
@@ -292,7 +293,7 @@ class DatabaseService:
             return course_data['course_id']
         except Exception as e:
             db.session.rollback()
-            print(f"Erreur ajout cours: {e}")
+            app_logger.error(f"Course creation error: {e}")
             return ""
 
     @staticmethod
@@ -310,7 +311,7 @@ class DatabaseService:
             return True
         except Exception as e:
             db.session.rollback()
-            print(f"Erreur TP name: {e}")
+            app_logger.error(f"TP name update error: {e}")
             return False
 
     @staticmethod

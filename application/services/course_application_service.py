@@ -5,6 +5,7 @@ from domain.repositories.course_repository import CourseRepository, CustomCourse
 from domain.services.room_assignment_service import RoomAssignmentService
 from domain.value_objects.time_slot import WeekIdentifier, TimeSlot
 from infrastructure.container import container
+from utils.logger import app_logger
 
 
 class CourseApplicationService:
@@ -34,21 +35,21 @@ class CourseApplicationService:
                 try:
                     result.append(self._course_to_dict(course))
                 except Exception as e:
-                    print(f"⚠️ Erreur mapping course {getattr(course, 'id', 'unknown')}: {e}")
+                    app_logger.error(f"Course mapping error {getattr(course, 'id', 'unknown')}: {e}")
                     continue
 
             for custom_course in custom_for_week:
                 try:
                     result.append(self._course_to_dict(custom_course))
                 except Exception as e:
-                    print(f"⚠️ Erreur mapping custom course {getattr(custom_course, 'id', 'unknown')}: {e}")
+                    app_logger.error(f"Custom course mapping error {getattr(custom_course, 'id', 'unknown')}: {e}")
                     continue
 
             return result
 
         except Exception as e:
             # Fallback vers les services legacy existants
-            print(f"🔄 Clean Architecture fallback pour {week_name}: {e}")
+            app_logger.warning(f"Clean Architecture fallback for {week_name}: {e}")
             try:
                 from services.scheduling_service import SchedulingService
                 legacy_service = SchedulingService()
@@ -79,7 +80,7 @@ class CourseApplicationService:
                     for course in filtered_courses
                 ]
             except Exception as legacy_error:
-                print(f"❌ Legacy fallback failed: {legacy_error}")
+                app_logger.error(f"Legacy fallback failed: {legacy_error}")
                 return []
 
     def get_courses_by_professor(self, professor_name: str) -> List[Dict[str, Any]]:

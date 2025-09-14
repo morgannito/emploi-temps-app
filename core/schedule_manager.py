@@ -9,6 +9,7 @@ from datetime import datetime
 
 from excel_parser import ExcelScheduleParser, normalize_professor_name
 from services.database_service import DatabaseService
+from utils.logger import app_logger
 
 
 @dataclass
@@ -83,7 +84,7 @@ class ScheduleManager:
             cache_service.invalidate_occupied_rooms_cache()
             return True
         except Exception as e:
-            print(f"Erreur lors du rechargement des données: {e}")
+            app_logger.error(f"Failed to reload schedule data: {e}")
             return False
 
     def get_prof_color(self, prof_name: str) -> str:
@@ -148,7 +149,7 @@ class ScheduleManager:
             return bool(result)
 
         except Exception as e:
-            print(f"❌ Erreur lors de l'attribution: {e}")
+            app_logger.error(f"Room assignment failed: {e}")
             return False
 
     def check_room_conflict(self, course_id: str, room_id: str) -> bool:
@@ -239,7 +240,7 @@ class ScheduleManager:
 
             return True
         except Exception as e:
-            print(f"Erreur lors de la sauvegarde du nom de TP: {e}")
+            app_logger.error(f"TP name save failed: {e}")
             return False
 
     def get_all_tp_names(self) -> Dict[str, str]:
@@ -253,7 +254,7 @@ class ScheduleManager:
                     return json.load(f)
             return {}
         except Exception as e:
-            print(f"Erreur lors du chargement des noms de TP: {e}")
+            app_logger.error(f"TP names load failed: {e}")
             return {}
 
     def get_tp_name(self, course_id: str) -> str:

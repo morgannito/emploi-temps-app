@@ -8,6 +8,7 @@ from services.planning_service import PlanningService
 from services.planning_v2_service import PlanningV2Service
 from services.pdf_export_service import PDFExportService
 from services.kiosque_service import KiosqueService
+from utils.logger import app_logger, log_performance
 from services.database_service import DatabaseService
 import time
 
@@ -88,10 +89,10 @@ class PlanningController(BaseController):
             courses_with_rooms = sum(1 for c in all_courses if c.assigned_room)
 
             if abs(room_assignments_count - courses_with_rooms) > 5:
-                print(f"Warning: Incohérence détectée - Attributions: {room_assignments_count}, Cours avec salles: {courses_with_rooms}")
+                app_logger.warning(f"Data inconsistency detected - Assignments: {room_assignments_count}, Courses with rooms: {courses_with_rooms}")
                 self.schedule_manager.force_sync_data()
         except Exception as e:
-            print(f"Erreur lors de la vérification de cohérence: {e}")
+            app_logger.error(f"Consistency check failed: {e}")
 
         # Générer les données de planning
         weeks_to_display = WeekService.generate_academic_calendar()
@@ -184,22 +185,22 @@ class PlanningController(BaseController):
             )
             return render_template('planning_v2.html', **context)
         except Exception as e:
-            print(f"Erreur planning_v2_fast: {e}")
+            app_logger.error(f"Fast planning error: {e}")
             return "Erreur lors de la génération du calendrier.", 500
 
     def planning_v2_spa(self, week_name=None):
         """Planning V2 SPA avec navigation AJAX"""
-        print(f"🎯 Route /planning_spa appelée avec week_name={week_name}")
+        app_logger.info(f"SPA planning route called with week: {week_name}")
 
         try:
             context = self.planning_v2_service.handle_fast_planning(
                 week_name=week_name,
                 cache_service=self.cache_service
             )
-            print(f"🎯 Contexte généré: {len(context)} éléments")
+            app_logger.info(f"Context generated: {len(context)} elements")
             return render_template('planning_v2_spa.html', **context)
         except Exception as e:
-            print(f"❌ Erreur planning_v2_spa: {e}")
+            app_logger.error(f"SPA planning error: {e}")
             import traceback
             traceback.print_exc()
             return f"Erreur lors de la génération du calendrier: {str(e)}", 500
@@ -339,11 +340,11 @@ class PlanningController(BaseController):
                 }
             }
 
-            print(f"🚀 SPA API /api/week_data/{week_name}: {len(formatted_courses)} cours en {elapsed:.2f}ms")
+            log_performance(f"SPA API week_data", elapsed, courses_count=len(formatted_courses), week_name=week_name)
             return jsonify(response_data)
 
         except Exception as e:
-            print(f"❌ Erreur SPA API week_data: {e}")
+            app_logger.error(f"SPA API week_data error: {e}")
             return jsonify({
                 'success': False,
                 'error': str(e),
