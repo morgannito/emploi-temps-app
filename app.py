@@ -7,6 +7,7 @@ Architecture moderne avec contrôleurs et logging professionnel
 from flask import Flask
 from flask_caching import Cache
 import os
+from datetime import datetime
 
 # Import des modèles et configuration
 from models import db
@@ -20,6 +21,11 @@ from controllers.planning_controller import PlanningController
 
 # Import des services globaux
 from services.cache_service import CacheService
+
+# Import du middleware de sécurité et authentification
+from utils.security import SecurityMiddleware
+from utils.auth import init_auth_routes
+from utils.error_handler import error_handler
 
 
 def create_app():
@@ -65,20 +71,52 @@ def create_app():
     # Initialisation du service de cache
     cache_service = CacheService()
 
-    # Gestionnaires d'erreur
-    @app.errorhandler(500)
-    def internal_error(error):
-        """Gestionnaire d'erreur pour les erreurs 500"""
-        app.logger.error(f'Erreur 500: {error}')
-        from flask import render_template
-        return render_template('error.html', error=error), 500
+    # Configuration du middleware de sécurité
+    security_middleware = SecurityMiddleware(app)
 
-    @app.errorhandler(404)
-    def not_found_error(error):
-        """Gestionnaire d'erreur pour les erreurs 404"""
-        app.logger.error(f'Erreur 404: {error}')
-        from flask import render_template
-        return render_template('error.html', error=error), 404
+    # Initialisation des routes d'authentification
+    init_auth_routes(app)
+
+    # Initialisation du gestionnaire d'erreurs avancé
+    error_handler.init_app(app)
+
+    # Routes de monitoring et métriques
+    @app.route('/api/error-stats')
+    def get_error_stats():
+        """API pour récupérer les statistiques d'erreurs"""
+        from flask import jsonify
+        return jsonify(error_handler.get_error_stats())
+
+    @app.route('/api/metrics')
+    def get_metrics():
+        """API pour récupérer les métriques système et performance"""
+        from flask import jsonify
+        from utils.logger import metrics_collector
+        return jsonify(metrics_collector.get_detailed_metrics())
+
+    @app.route('/api/health')
+    def health_check():
+        """API de santé pour monitoring externe"""
+        from flask import jsonify
+        from utils.logger import metrics_collector
+
+        system_metrics = metrics_collector.get_system_metrics()
+        health_status = {
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'uptime': system_metrics['uptime'],
+            'memory_usage': system_metrics['memory_percent'],
+            'error_rate': system_metrics['error_count'] / max(system_metrics['total_requests'], 1) * 100
+        }
+
+        # Déterminer le statut de santé
+        if health_status['memory_usage'] > 90:
+            health_status['status'] = 'degraded'
+        if health_status['error_rate'] > 10:
+            health_status['status'] = 'degraded'
+
+        status_code = 200 if health_status['status'] == 'healthy' else 503
+        return jsonify(health_status), status_code
 
     # Enregistrement des contrôleurs
     course_controller = CourseController(schedule_manager)
@@ -118,6 +156,7 @@ def create_app():
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
 
+
     @app.route('/test_template')
     def test_template():
         """Route de test pour vérifier les templates"""
@@ -144,4 +183,4 @@ app = create_app()
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5005)
+    app.run(debug=True, host='0.0.0.0', port=5007)

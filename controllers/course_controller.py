@@ -2,6 +2,7 @@ from flask import request, jsonify
 from controllers.base_controller import BaseController
 from services.course_api_service import CourseAPIService
 from application.services.course_application_service import CourseApplicationService
+from utils.security import require_valid_input, admin_required, InputValidator
 
 
 class CourseController(BaseController):
@@ -12,6 +13,29 @@ class CourseController(BaseController):
         self.course_api_service = CourseAPIService(schedule_manager)
         self.clean_course_service = CourseApplicationService()
         super().__init__('courses', url_prefix='/api/courses')
+
+    def validate_course_data(self, data):
+        """Validation spécifique aux données de cours"""
+        if not data:
+            return False
+
+        # Validation des champs obligatoires
+        required_fields = ['week_name', 'day', 'professor', 'course_type']
+        for field in required_fields:
+            if not data.get(field):
+                return False
+
+        # Validation du format des données
+        if not InputValidator.validate_week_name(data.get('week_name', '')):
+            return False
+
+        if not InputValidator.validate_professor_name(data.get('professor', '')):
+            return False
+
+        if data.get('raw_time_slot') and not InputValidator.validate_time_slot(data['raw_time_slot']):
+            return False
+
+        return True
 
     def _register_routes(self):
         """Enregistrement des routes pour les cours"""
@@ -25,11 +49,15 @@ class CourseController(BaseController):
         self.blueprint.route('', methods=['GET'])(self.get_courses_clean)
         self.blueprint.route('/room/<room_id>', methods=['GET'])(self.get_courses_by_room_clean)
 
+    @admin_required
     def add_custom_course(self):
         """API pour ajouter un TP personnalisé"""
         data = self.get_json_data()
 
-        # Validation
+        # Validation sécurisée
+        if not self.validate_course_data(data):
+            return self.error_response("Invalid course data format", 400)
+
         required_fields = ['week_name', 'day', 'raw_time_slot', 'professor', 'course_type']
         validation_error = self.validate_required_fields(data, required_fields)
         if validation_error:

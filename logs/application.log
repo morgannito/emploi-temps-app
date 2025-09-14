@@ -1,3 +1,170 @@
 {'timestamp': '2025-09-14T10:14:16.474101', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Testing logging system', 'function': '<module>', 'line': 3}
 {'timestamp': '2025-09-14T10:15:31.903394', 'level': 'WARNING', 'module': 'emploi_temps', 'message': "Clean Architecture fallback for Semaine 37 B: 'Course' object has no attribute 'student_count'", 'function': 'get_courses_by_week', 'line': 52}
 {'timestamp': '2025-09-14T10:15:31.904110', 'level': 'ERROR', 'module': 'emploi_temps', 'message': "Legacy fallback failed: No module named 'services.scheduling_service'", 'function': 'get_courses_by_week', 'line': 83}
+{'timestamp': '2025-09-14T10:26:34.756498', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 204.40173149108887}
+{'timestamp': '2025-09-14T10:26:34.765141', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T10:26:34.933011', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 147.96209335327148}
+{'timestamp': '2025-09-14T10:48:59.097152', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 233.12616348266602}
+{'timestamp': '2025-09-14T10:48:59.107375', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T10:48:59.324211', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 195.0540542602539}
+{'timestamp': '2025-09-14T10:49:09.034614', 'level': 'WARNING', 'module': 'emploi_temps', 'message': "Clean Architecture fallback for Semaine 37 B: 'Course' object has no attribute 'student_count'", 'function': 'get_courses_by_week', 'line': 52}
+{'timestamp': '2025-09-14T10:49:09.034928', 'level': 'ERROR', 'module': 'emploi_temps', 'message': "Legacy fallback failed: No module named 'services.scheduling_service'", 'function': 'get_courses_by_week', 'line': 83}
+{'timestamp': '2025-09-14T10:51:58.213656', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T10:52:12.708343', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T10:52:20.544797', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T10:52:29.207371', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T10:52:36.771209', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T10:52:38.077700', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T10:52:45.127625', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: admin', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:52:45.127744', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Successful authentication for user: admin', 'function': 'verify_credentials', 'line': 45}
+{'timestamp': '2025-09-14T10:52:45.128056', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'JWT token generated for user: admin', 'function': 'generate_token', 'line': 62}
+{'timestamp': '2025-09-14T10:52:53.493070', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Admin access attempt: 127.0.0.1 -> courses.add_custom_course', 'function': 'wrapper', 'line': 271}
+{'timestamp': '2025-09-14T10:53:08.879665', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:08.879775', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:09.048636', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:09.048733', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:09.225255', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:09.225418', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:09.396373', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:09.396457', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:09.567275', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:09.567373', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:09.738568', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:09.738672', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:09.910542', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:09.910666', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:10.089393', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:10.089484', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:10.267919', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:10.268010', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:10.436689', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:10.436789', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:10.603051', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:10.603148', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:10.777461', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:10.777569', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:10.948789', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:10.948891', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:11.117996', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:11.118090', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:11.286872', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:11.286967', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:11.452623', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:11.452720', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:11.663849', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:11.663950', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:11.836951', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:11.837048', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:12.012747', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:12.012860', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:12.181327', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:12.181422', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:12.354015', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:12.354113', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:12.526491', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:12.526594', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:12.694866', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:12.694958', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:12.873365', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:12.873470', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:53:13.050564', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: wrong', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:53:13.050672', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: wrong', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:56:54.111265', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Admin access attempt: 127.0.0.1 -> courses.add_custom_course', 'function': 'wrapper', 'line': 271}
+{'timestamp': '2025-09-14T10:57:04.063127', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Invalid token', 'function': 'verify_token', 'line': 75}
+{'timestamp': '2025-09-14T10:57:14.847666', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: <script>alert("XSS")</script>', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:57:14.847834', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Failed authentication attempt for user: <script>alert("XSS")</script>', 'function': 'verify_credentials', 'line': 47}
+{'timestamp': '2025-09-14T10:58:04.105446', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Login attempt from 127.0.0.1 for user: admin', 'function': 'login', 'line': 162}
+{'timestamp': '2025-09-14T10:58:04.105558', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Successful authentication for user: admin', 'function': 'verify_credentials', 'line': 45}
+{'timestamp': '2025-09-14T10:58:04.105794', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'JWT token generated for user: admin', 'function': 'generate_token', 'line': 62}
+{'timestamp': '2025-09-14T10:59:52.901918', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 224.79510307312012}
+{'timestamp': '2025-09-14T10:59:52.911861', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T10:59:53.122970', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 190.68598747253418}
+{'timestamp': '2025-09-14T10:59:56.057939', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 158.9488983154297}
+{'timestamp': '2025-09-14T10:59:56.067529', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T10:59:56.231255', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 161.6659164428711}
+{'timestamp': '2025-09-14T10:59:58.801501', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 160.3107452392578}
+{'timestamp': '2025-09-14T10:59:58.810822', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T10:59:59.008449', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 195.51801681518555}
+{'timestamp': '2025-09-14T11:00:03.596673', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 154.77395057678223}
+{'timestamp': '2025-09-14T11:00:03.605385', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:00:03.802567', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 194.75293159484863}
+{'timestamp': '2025-09-14T11:02:35.070949', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 182.42502212524414}
+{'timestamp': '2025-09-14T11:02:35.080678', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:02:35.262287', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 179.46791648864746}
+{'timestamp': '2025-09-14T11:02:55.598415', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 156.78906440734863}
+{'timestamp': '2025-09-14T11:04:15.401622', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:04:15.401623', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:04:53.750698', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:04:53.750774', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:05:17.656396', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:05:17.656731', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:05:37.748412', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:05:37.748412', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:05:51.780490', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:05:51.780490', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:06:13.626383', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:06:13.626488', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:10:27.119382', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:10:34.184473', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 246.41895294189453}
+{'timestamp': '2025-09-14T11:10:34.193663', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:10:34.399037', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 184.86595153808594}
+{'timestamp': '2025-09-14T11:10:35.435704', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 150.59804916381836}
+{'timestamp': '2025-09-14T11:10:35.445307', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:10:35.605404', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 157.8209400177002}
+{'timestamp': '2025-09-14T11:10:36.889110', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 201.75886154174805}
+{'timestamp': '2025-09-14T11:10:36.898376', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:10:37.057562', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 157.20200538635254}
+{'timestamp': '2025-09-14T11:10:44.615524', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 153.1689167022705}
+{'timestamp': '2025-09-14T11:10:44.625399', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:10:44.781228', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 153.6729335784912}
+{'timestamp': '2025-09-14T11:10:51.773805', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 152.49395370483398}
+{'timestamp': '2025-09-14T11:10:51.782744', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:10:51.975393', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 190.57416915893555}
+{'timestamp': '2025-09-14T11:12:08.413212', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:12:08.413272', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:13:11.618898', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 185.00709533691406}
+{'timestamp': '2025-09-14T11:13:11.628482', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:13:11.803192', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 153.4109115600586}
+{'timestamp': '2025-09-14T11:13:14.341892', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 170.10879516601562}
+{'timestamp': '2025-09-14T11:13:14.351375', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:13:14.643309', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 291.41807556152344}
+{'timestamp': '2025-09-14T11:13:14.654021', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:13:14.799685', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 444.9949264526367}
+{'timestamp': '2025-09-14T11:13:14.810119', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:13:15.283065', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 822.0729827880859}
+{'timestamp': '2025-09-14T11:13:15.470382', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 714.4722938537598}
+{'timestamp': '2025-09-14T11:13:15.690919', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 875.128984451294}
+{'timestamp': '2025-09-14T11:13:19.652718', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 192.2280788421631}
+{'timestamp': '2025-09-14T11:13:19.663008', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:13:19.822443', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 158.53095054626465}
+{'timestamp': '2025-09-14T11:13:19.831993', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:13:20.091614', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 258.9077949523926}
+{'timestamp': '2025-09-14T11:13:20.279646', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 443.9091682434082}
+{'timestamp': '2025-09-14T11:13:32.045432', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:13:32.406699', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:13:54.598467', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 193.6779022216797}
+{'timestamp': '2025-09-14T11:13:54.607427', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:13:54.822216', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 113, 'execution_time_ms': 184.12184715270996}
+{'timestamp': '2025-09-14T11:21:28.625909', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:21:28.663205', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:22:32.199706', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:22:32.199706', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:22:38.783056', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:22:38.784474', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:22:44.352312', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:22:44.352590', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:22:54.093172', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:22:54.093171', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:38:57.846810', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:38:57.869275', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:43:16.589092', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:43:17.953167', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:43:29.399435', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 118, 'execution_time_ms': 217.1180248260498}
+{'timestamp': '2025-09-14T11:43:29.408691', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:43:29.636699', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 118, 'execution_time_ms': 198.26102256774902}
+{'timestamp': '2025-09-14T11:46:01.579880', 'level': 'WARNING', 'module': 'emploi_temps', 'message': "Clean Architecture fallback for Semaine 37 B: 'Course' object has no attribute 'student_count'", 'function': 'get_courses_by_week', 'line': 52}
+{'timestamp': '2025-09-14T11:46:01.580863', 'level': 'ERROR', 'module': 'emploi_temps', 'message': "Legacy fallback failed: No module named 'services.scheduling_service'", 'function': 'get_courses_by_week', 'line': 83}
+{'timestamp': '2025-09-14T11:46:58.462450', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'Authentication routes initialized', 'function': 'init_auth_routes', 'line': 236}
+{'timestamp': '2025-09-14T11:47:16.110651', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 118, 'execution_time_ms': 193.3579444885254}
+{'timestamp': '2025-09-14T11:47:16.121947', 'level': 'WARNING', 'module': 'emploi_temps', 'message': 'Data inconsistency detected - Assignments: 625, Courses with rooms: 487', 'function': 'admin', 'line': 92}
+{'timestamp': '2025-09-14T11:47:16.363297', 'level': 'INFO', 'module': 'emploi_temps', 'message': 'DB get_all_courses on courses', 'function': 'log_database_operation', 'line': 118, 'execution_time_ms': 211.67993545532227}

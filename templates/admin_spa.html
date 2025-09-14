@@ -344,18 +344,19 @@
             background: #c82333;
         }
 
-        /* SPA Loading Indicator */
+        /* SPA Loading Indicator - Optimized */
         .spa-loading {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 9999;
+            backdrop-filter: blur(2px);
         }
 
         .loading-spinner {
@@ -395,19 +396,26 @@
             position: fixed;
             top: 10px;
             left: 10px;
-            background: #4caf50;
+            background: linear-gradient(135deg, #4caf50, #45a049);
             color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 11px;
             font-weight: bold;
             z-index: 1000;
+            box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .spa-indicator:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
         }
     </style>
 </head>
 <body>
     <!-- SPA Indicator -->
-    <div class="spa-indicator">SPA Mode Active</div>
+    <div class="spa-indicator" title="Single Page Application - Navigation ultra-rapide">🚀 SPA Mode</div>
 
     <!-- Loading Indicator -->
     <div id="spa-loading" class="spa-loading">
@@ -420,7 +428,7 @@
     <div class="container">
         <div class="header">
             <h1>Attribution des Salles</h1>
-            <p>Vue générale de l'emploi du temps par jour.</p>
+            <p>Interface SPA optimisée - Navigation ultra-rapide</p>
             {% if current_week_info %}
             <p id="week-info" style="color: #666; font-size: 0.9em; margin-top: 5px;">
                 📅 Semaine du {{ current_week_info.date }}
@@ -698,6 +706,35 @@
         init() {
             this.bindWeekSelector();
             this.initializeExistingFeatures();
+            this.preloadAdjacentWeeks();
+        }
+
+        preloadAdjacentWeeks() {
+            // Préchargement intelligent des semaines adjacentes
+            const weekSelect = document.getElementById('week-select');
+            if (!weekSelect) return;
+
+            const currentIndex = weekSelect.selectedIndex;
+            const toPreload = [];
+
+            // Précharger la semaine précédente et suivante
+            if (currentIndex > 0) {
+                toPreload.push(weekSelect.options[currentIndex - 1].value);
+            }
+            if (currentIndex < weekSelect.options.length - 1) {
+                toPreload.push(weekSelect.options[currentIndex + 1].value);
+            }
+
+            // Préchargement en arrière-plan avec low priority
+            setTimeout(() => {
+                toPreload.forEach(weekName => {
+                    fetch(`/spa/week/${encodeURIComponent(weekName)}`, {
+                        priority: 'low',
+                        cache: 'force-cache'
+                    }).catch(() => {}); // Silent fail pour le préchargement
+                });
+                console.log(`🚀 SPA: Préchargement de ${toPreload.length} semaines terminé`);
+            }, 2000);
         }
 
         bindWeekSelector() {
@@ -718,9 +755,26 @@
             if (this.isLoading || weekName === this.currentWeek) return;
 
             this.showLoading();
+            const startTime = performance.now();
 
             try {
-                const response = await fetch(`/spa/week/${encodeURIComponent(weekName)}`);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+                const response = await fetch(`/spa/week/${encodeURIComponent(weekName)}`, {
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const html = await response.text();
 
                 // Créer un document temporaire pour extraire le contenu
@@ -745,7 +799,15 @@
                     window.history.pushState({ week: weekName }, '', `/spa/week/${encodeURIComponent(weekName)}`);
 
                     this.currentWeek = weekName;
-                    this.showNotification(`Semaine ${weekName} chargée avec succès`);
+
+                    // Métriques de performance
+                    const loadTime = performance.now() - startTime;
+                    console.log(`🚀 SPA: Changement de semaine en ${loadTime.toFixed(0)}ms`);
+
+                    this.showNotification(`Semaine ${weekName} chargée (${loadTime.toFixed(0)}ms)`);
+
+                    // Précharger les semaines adjacentes après chargement
+                    setTimeout(() => this.preloadAdjacentWeeks(), 1000);
                 } else {
                     throw new Error('Contenu invalide reçu du serveur');
                 }

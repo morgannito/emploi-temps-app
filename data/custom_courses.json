@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "week_name": "Semaine 37 B",
+    "day": "Lundi",
+    "raw_time_slot": "08:00-10:00",
+    "professor": "Test Prof",
+    "course_type": "TP",
+    "course_id": "custom_20250914125253493852",
+    "start_time": "00:00",
+    "end_time": "00:00",
+    "duration_hours": 0
+  }
+]
