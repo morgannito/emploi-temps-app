@@ -1,3 +1,4 @@
+import copy
 from datetime import date, timedelta, datetime
 from typing import Dict, List, Any
 import pytz
@@ -218,7 +219,7 @@ class PlanningV2Service:
                     weekly_grid[day][slot_label]['courses'].append(course)
                 else:
                     # Dans les créneaux suivants, placer une continuation
-                    continuation_course = course.copy()
+                    continuation_course = copy.deepcopy(course)
                     continuation_course['is_continuation'] = True
                     continuation_course['primary_slot'] = primary_slot
                     weekly_grid[day][slot_label]['courses'].append(continuation_course)
