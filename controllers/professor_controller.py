@@ -3,6 +3,7 @@ from controllers.base_controller import BaseController
 from services.professor_api_service import ProfessorAPIService
 from services.professor_service import ProfessorService
 from excel_parser import ExcelScheduleParser
+from utils.logger import app_logger
 
 
 class ProfessorController(BaseController):
@@ -146,4 +147,5 @@ class ProfessorController(BaseController):
                 return self.error_response('Impossible de sauvegarder', 404)
 
         except Exception as e:
-            return self.error_response(str(e), 500)
+            app_logger.error(f"save_prof_schedule error for {prof_name}: {e}")
+            return self.error_response('Erreur interne lors de la sauvegarde', 500)
