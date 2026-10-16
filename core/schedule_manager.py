@@ -285,7 +285,7 @@ class ScheduleManager:
         """Retourne un dictionnaire des jours travaillés pour chaque professeur"""
         working_days = {}
         for prof_name, prof_data in self.canonical_schedules.items():
-            days = sorted(list(set(c.get('day') for c in prof_data['courses'] if c.get('day') not in [None, 'Indéterminé'])))
+            days = sorted(list(set(c.get('day') for c in prof_data.get('courses', []) if c.get('day') not in [None, 'Indéterminé'])))
             working_days[prof_name] = days
         return working_days
 
