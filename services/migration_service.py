@@ -267,6 +267,10 @@ class MigrationService:
             with open(custom_path, 'r', encoding='utf-8') as f:
                 custom_data = json.load(f)
 
+            if not isinstance(custom_data, list):
+                print("⚠️  custom_courses.json n'est pas une liste, migration ignorée")
+                return 0
+
             count = 0
             for course_data in custom_data:
                 custom_course = CustomCourse(
