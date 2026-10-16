@@ -123,7 +123,7 @@ class CourseApplicationService:
         custom_courses = self._custom_course_repo.find_all_custom_courses()
         custom_for_week = [
             c for c in custom_courses
-            if c.week_identifier.value == week_name
+            if getattr(c, 'week_identifier', None) and getattr(c.week_identifier, 'value', '') == week_name
         ]
 
         all_courses = courses + custom_for_week
