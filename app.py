@@ -183,4 +183,6 @@ app = create_app()
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5007)
+    debug = os.environ.get('FLASK_DEBUG') == '1'
+    host = '127.0.0.1' if debug else os.environ.get('FLASK_HOST', '0.0.0.0')
+    app.run(debug=debug, host=host, port=5007)
