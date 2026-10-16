@@ -126,7 +126,7 @@ class ProfessorController(BaseController):
         """API pour sauvegarder le nouvel emploi du temps d'un professeur"""
         try:
             new_courses = self.get_json_data()
-            if not isinstance(new_courses, list):
+            if not isinstance(new_courses, list) or not all(isinstance(c, dict) for c in new_courses):
                 return self.error_response('Format de données invalide')
 
             # Recalculer les durées avant de sauvegarder
