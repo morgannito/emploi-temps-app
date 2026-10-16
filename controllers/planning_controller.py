@@ -222,7 +222,8 @@ class PlanningController(BaseController):
                 mimetype='application/pdf'
             )
         except Exception as e:
-            return f"Erreur lors de la génération du PDF: {str(e)}", 500
+            app_logger.error(f"PDF export error: {e}")
+            return "Erreur lors de la génération du PDF", 500
 
     def export_day_pdf(self, week_name, day_name):
         """Export PDF d'une journée"""
@@ -236,7 +237,8 @@ class PlanningController(BaseController):
                 mimetype='application/pdf'
             )
         except Exception as e:
-            return f"Erreur lors de la génération du PDF: {str(e)}", 500
+            app_logger.error(f"PDF export error: {e}")
+            return "Erreur lors de la génération du PDF", 500
 
     def student_view(self, week_name=None):
         """Redirection vers la vue kiosque compact"""
@@ -347,7 +349,7 @@ class PlanningController(BaseController):
             app_logger.error(f"SPA API week_data error: {e}")
             return jsonify({
                 'success': False,
-                'error': str(e),
+                'error': 'Erreur interne',
                 'week_name': week_name
             }), 500
 
