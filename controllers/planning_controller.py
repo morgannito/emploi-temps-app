@@ -366,6 +366,7 @@ class PlanningController(BaseController):
         current_day_fr = day_translation.get(current_day, 'Lundi')
 
         week_num = now.isocalendar()[1]
+        current_week = None  # hors periode connue : aucun cours en cours
         if now.year == 2025 and week_num >= 36:
             weeks_since_start = week_num - 36
             is_type_A = (weeks_since_start % 2) == 0
