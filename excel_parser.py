@@ -124,7 +124,7 @@ class ExcelScheduleParser:
                     prof_name = str(row_data.get(c_idx, '')).strip()
                     time_slot = str(row_data.get(c_idx + 1, '')).strip()
 
-                    if not prof_name or prof_name.lower() in ['professeur', 'nan', 'matin', 'apres-midi'] or not self.parse_time_range(time_slot):
+                    if not prof_name or prof_name.lower() in ['professeur', 'nan', 'matin', 'apres-midi'] or time_slot.lower() in ['', 'nan']:
                         break  # Fin du bloc de cours
 
                     parsed_time = self.parse_time_range(time_slot)
@@ -145,6 +145,8 @@ class ExcelScheduleParser:
                             'raw_time_slot': time_slot
                         }
                         week_data['professors'][prof_name].append(course_data)
+                    else:
+                        print(f"⚠️ Ligne {i} ignorée ({sheet_name}) : créneau invalide '{time_slot}'")
             
             return week_data
             
