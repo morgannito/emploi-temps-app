@@ -116,7 +116,7 @@ class CourseApplicationService:
 
     def validate_schedule_for_week(self, week_name: str) -> List[str]:
         """Valide l'intégrité du planning d'une semaine"""
-        week_id = WeekIdentifier(week_name)
+        week_id = WeekIdentifier.from_string(week_name)
         courses = self._course_repo.find_by_week(week_id)
 
         # Ajouter les cours personnalisés
