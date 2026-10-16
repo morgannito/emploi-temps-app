@@ -1,3 +1,4 @@
+import copy
 import os
 import time
 from typing import Dict, List, Any, Optional
@@ -246,7 +247,7 @@ class CacheService:
                     weekly_grid[day][slot_label]['courses'].append(course)
                 else:
                     # Dans les créneaux suivants, placer une continuation
-                    continuation_course = course.copy()
+                    continuation_course = copy.deepcopy(course)
                     continuation_course['is_continuation'] = True
                     continuation_course['primary_slot'] = primary_slot
                     weekly_grid[day][slot_label]['courses'].append(continuation_course)
