@@ -80,8 +80,11 @@ class ExcelScheduleParser:
         start_time = f"{start_hour:02d}:{start_min:02d}"
         end_time = f"{end_hour:02d}:{end_min:02d}"
         
-        start_dt = datetime.strptime(start_time, "%H:%M")
-        end_dt = datetime.strptime(end_time, "%H:%M")
+        try:
+            start_dt = datetime.strptime(start_time, "%H:%M")
+            end_dt = datetime.strptime(end_time, "%H:%M")
+        except ValueError:
+            return None
         duration = (end_dt - start_dt).total_seconds() / 3600
         
         return start_time, end_time, duration
