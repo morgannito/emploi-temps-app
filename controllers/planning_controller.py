@@ -203,7 +203,7 @@ class PlanningController(BaseController):
             app_logger.error(f"SPA planning error: {e}")
             import traceback
             traceback.print_exc()
-            return f"Erreur lors de la génération du calendrier: {str(e)}", 500
+            return "Erreur lors de la génération du calendrier", 500
 
     def day_view(self, week_name, day_name):
         """Page d'attribution des salles pour un jour spécifique"""
