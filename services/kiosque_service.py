@@ -244,7 +244,7 @@ class KiosqueService:
             hour_start = int(start_time.split(':')[0])
             min_start = int(start_time.split(':')[1]) if ':' in start_time else 0
             hour_end = int(end_time.split(':')[0]) if end_time else hour_start + 1
-            min_end = int(end_time.split(':')[1]) if ':' in end_time and end_time else 0
+            min_end = int(end_time.split(':')[1]) if end_time and ':' in end_time else 0
 
             # Format du label (ex: "8h-9h", "10h15-11h15")
             if min_start == 0 and min_end == 0:
