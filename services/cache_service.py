@@ -135,7 +135,7 @@ class CacheService:
             self._courses_cache[week_name] = courses
             print(f"🔍 Cache mis à jour: {len(courses)} cours pour {week_name}")
 
-        return self._courses_cache[week_name]
+        return list(self._courses_cache[week_name])
 
     def build_weekly_grid_optimized(self, courses_for_week: List, time_slots: List[Dict],
                                    days_order: List[str], schedule_manager) -> Dict:
