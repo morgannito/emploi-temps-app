@@ -146,6 +146,7 @@ class DatabaseService:
         return courses
 
     @staticmethod
+    @monitor_query
     def get_courses_by_week_and_day(week_name: str, day_name: str) -> List[ProfessorCourse]:
         """Récupère les cours pour un jour spécifique - OPTIMISÉ avec index composite"""
         start_time = time.time()
